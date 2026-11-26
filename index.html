@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v26';
+const SAVE='nile-civ-v27';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -217,6 +217,17 @@ function drawBattle(c,time){if(!BATTLE)return;if(BATTLE.t0===null)BATTLE.t0=time
  if(e>1.5){const mx=cx+Math.cos(ang)*T*2,my=cy+Math.sin(ang)*T*2;for(let i=0;i<5;i++){const ph=(time/200+i*1.3)%2;c.fillStyle='rgba(255,'+(200-i*20)+',80,'+(1-ph/2)+')';c.beginPath();c.arc(mx+Math.sin(i*3+time/50)*T*.7,my-ph*8+Math.cos(i*2)*T*.5,3+ph*3,0,7);c.fill()}
   c.fillStyle='rgba(120,100,80,.25)';for(let i=0;i<4;i++){c.beginPath();c.arc(mx+Math.sin(i*2+time/400)*T,my-6-e*3%20,10+i*3,0,7);c.fill()}}
  c.font='bold 16px sans-serif';c.textAlign='center';c.fillStyle='#ff6a4a';c.strokeStyle='#000';c.lineWidth=3;const msg=BATTLE.win?'صدّينا الغارة!':'غارة على المدينة!';c.strokeText('⚔ '+msg,cx,cy-T*4.2);c.fillText('⚔ '+msg,cx,cy-T*4.2);c.restore()}
+function drawRing(c,time){let wn=0,x0=99,y0=99,x1=-1,y1=-1;for(let y=0;y<H;y++)for(let x=0;x<W;x++){const b=S.tiles[idx(x,y)].b;if(!b)continue;if(b==='wall')wn++;if(Math.abs(x-S.cx)+Math.abs(y-S.cy)>12)continue;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+ if(wn<4||x1<0)return;x0=(x0-1)*T;y0=(y0-1)*T;x1=(x1+2)*T;y1=(y1+2)*T;const lvl=wn>=16?3:wn>=8?2:1;
+ const col=[['#a98a5a','#7d643c'],['#b9b3a2','#8a8472'],['#d8d0b8','#9c9478']][lvl-1],th=[5,7,9][lvl-1];
+ c.save();c.lineJoin='round';c.strokeStyle='rgba(0,0,0,.25)';c.lineWidth=th+3;c.strokeRect(x0+2,y0+3,x1-x0,y1-y0);
+ c.strokeStyle=col[1];c.lineWidth=th+2;c.strokeRect(x0,y0,x1-x0,y1-y0);c.strokeStyle=col[0];c.lineWidth=th-1;c.strokeRect(x0,y0,x1-x0,y1-y0);
+ c.fillStyle=col[1];const step=14;const cren=(ax,ay,bx,by)=>{const L=Math.hypot(bx-ax,by-ay);for(let d=0;d<L;d+=step){const px=ax+(bx-ax)*d/L,py=ay+(by-ay)*d/L;c.fillRect(px-2,py-th/2-3,4,3)}};
+ cren(x0,y0,x1,y0);cren(x0,y1,x1,y1);cren(x0,y0,x0,y1);cren(x1,y0,x1,y1);
+ if(lvl>=2){for(const [tx,ty] of [[x0,y0],[x1,y0],[x0,y1],[x1,y1]]){c.fillStyle=col[0];c.fillRect(tx-9,ty-12,18,20);c.fillStyle=col[1];for(let k=0;k<3;k++)c.fillRect(tx-9+k*7,ty-16,4,5);c.fillRect(tx-2,ty-4,4,8)}}
+ const gx=(x0+x1)/2,gy=y1;c.fillStyle='#4a3018';c.fillRect(gx-9,gy-8,18,14);c.fillStyle=col[1];c.fillRect(gx-12,gy-12,24,5);
+ if(lvl>=3){for(const [tx,ty] of [[(x0+x1)/2,y0],[x0,(y0+y1)/2],[x1,(y0+y1)/2]]){c.fillStyle=col[0];c.fillRect(tx-7,ty-10,14,16);c.fillStyle=col[1];c.fillRect(tx-7,ty-13,4,4);c.fillRect(tx+3,ty-13,4,4);c.strokeStyle='#4a3018';c.lineWidth=1.5;c.beginPath();c.moveTo(tx,ty-10);c.lineTo(tx,ty-22);c.stroke();c.fillStyle='#c33';const w=Math.sin(time/250+tx)*2;c.beginPath();c.moveTo(tx,ty-22);c.lineTo(tx+9+w,ty-19);c.lineTo(tx,ty-16);c.fill()}}
+ c.restore()}
 function drawPalm(c,x,y,t,k){const sw=Math.sin(t/700+k)*2;c.strokeStyle='#6b4a22';c.lineWidth=2.5;c.beginPath();c.moveTo(x,y);c.quadraticCurveTo(x+1+sw*.4,y-9,x+sw,y-17);c.stroke();c.strokeStyle='#2f8f3a';c.lineWidth=2;for(let a=-2;a<=2;a++){c.beginPath();c.moveTo(x+sw,y-17);c.quadraticCurveTo(x+sw+a*6,y-22+Math.abs(a)*2,x+sw+a*9,y-14+Math.abs(a)*3+sw*.3);c.stroke()}c.fillStyle='#a8742a';c.beginPath();c.arc(x+sw-1,y-16,1.5,0,7);c.fill()}
 function drawReeds(c,x,y,t,k){c.strokeStyle='#4f7a2a';c.lineWidth=1.6;for(let i=0;i<5;i++){const bx=x+i*3-6,sw=Math.sin(t/500+k+i)*1.5;c.beginPath();c.moveTo(bx,y);c.quadraticCurveTo(bx+sw*.5,y-7,bx+sw,y-13-(i%3)*2);c.stroke();if(i%2===0){c.fillStyle='#7a5530';c.fillRect(bx+sw-1,y-16-(i%3)*2,2,4)}}}
 let DIFF=1;
@@ -884,6 +895,7 @@ function draw(time){
         if(S.pop>8&&seasonIdx()!==0||t.b==='lumber'||t.b==='quarry'){if(t.b==='farm'&&seasonIdx()!==0)drawWorker(ctx,'hoe',x*T+T*.5,y*T+T-1,time,x*3+y);else if(t.b==='lumber')drawWorker(ctx,'axe',x*T+T*.78,y*T+T-1,time,x+y*2);else if(t.b==='quarry')drawWorker(ctx,'pick',x*T+T*.2,y*T+T-1,time,x*2+y);else if(t.b==='fishery')drawWorker(ctx,'rod',x*T+T*.5,y*T+T-1,time,x+y)}}
     }
   }
+  drawRing(ctx,time);
   // neighbors
   drawBattle(ctx,time);
   for(const n of S.neigh){const d=NEIGH_DEF.find(q=>q.id===n.id);drawCity(ctx,d.x*T+T/2,d.y*T+T/2,{nubia:'#c07a2c',hyksos:'#8a2a9a',libya:'#2a8a9a'}[n.id]||'#b33',n.conquered,time,d.x);ctx.font='bold 13px serif';ctx.textAlign='center';ctx.font='bold 11px sans-serif';ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.lineWidth=3;ctx.strokeText(d.n,d.x*T+T/2,d.y*T-T*1.1);ctx.fillText(d.n,d.x*T+T/2,d.y*T-T*1.1)}
