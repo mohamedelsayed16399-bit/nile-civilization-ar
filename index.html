@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v42';
+const SAVE='nile-civ-v43';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -503,6 +503,7 @@ function rates(){
   if(S.treaty&&S.day<S.treaty)gold*=1.12;
   {const pr=provBonus();food+=pr.f;gold+=pr.g;stone+=pr.s;cul+=pr.c;sci+=pr.sc}
   {const gm=godMul();food*=gm.f;gold*=gm.g;cul*=gm.c;sci*=gm.s;wood*=gm.w;stone*=gm.w}
+  {const L=S.pyr||0;cul+=(L>=4?1:0)+(L>=8?2:0)+(L>=12?5:0);gold+=(L>=8?1.5:0)+(L>=12?3:0)}
   if(S.ships)gold+=S.ships*2.2*(countB('lighthouse')?1.25:1);
   const eat=S.pop*.2*[.85,1,1.15][S.diff===undefined?1:S.diff];
   food-=eat;
@@ -859,6 +860,39 @@ function chooseGod(k){S.god=k;S.faith=S.faith||0;S.ftier=faithTier();addLog('�
 function changeGod(){S.god=null;S.faith=Math.floor((S.faith||0)/2);S.ftier=0;showFaith()}
 function doRitual(){if((S.ritualAt||0)>S.day){toast('⏳ القربان القادم بعد أيام');return}if(S.res.gold<30||S.res.food<10){toast('⚠️ لا يكفي الذهب أو الغذاء');return}
  S.res.gold-=30;S.res.food-=10;S.faith=(S.faith||0)+8;S.ritualAt=S.day+6;toast('🔥 قُبل قربانك');addLog('🔥 قربان لـ'+GODS[S.god].n);faithTick();renderAll();save();showFaith()}
+
+// ===== Great Pyramid project (round 43) =====
+const PYR_COST={stone:25,wood:8,gold:10};
+function pyrDraw(cv,t,L){const c=cv.getContext('2d'),W2=cv.width,H2=cv.height;
+ const g=c.createLinearGradient(0,0,0,H2);g.addColorStop(0,'#2b6cb0');g.addColorStop(.5,'#f6c97a');g.addColorStop(.62,'#d9b070');g.addColorStop(1,'#b88a48');c.fillStyle=g;c.fillRect(0,0,W2,H2);
+ c.fillStyle='rgba(255,240,190,.9)';c.beginPath();c.arc(W2-70,48,24,0,7);c.fill();
+ c.fillStyle='#c9a060';c.beginPath();c.moveTo(0,H2*.62);c.quadraticCurveTo(120,H2*.5,260,H2*.62);c.lineTo(260,H2);c.lineTo(0,H2);c.fill();
+ const base=W2/2,gy=H2-36,N=12,bw=300,lh=(H2-100)/N;
+ // ramp
+ if(L<N){c.fillStyle='#d9c090';c.beginPath();c.moveTo(base+bw/2,gy);c.lineTo(base+bw/2+90,gy);c.lineTo(base+bw/2-(L*bw/N/2)-4,gy-L*lh);c.closePath();c.fill()}
+ for(let i=0;i<Math.max(L,0);i++){const w=bw*(1-i/N),y=gy-(i+1)*lh;
+  c.fillStyle=i%2?'#e0c27a':'#d4b36a';c.fillRect(base-w/2,y,w,lh+.5);
+  c.fillStyle='rgba(255,255,255,.18)';c.fillRect(base-w/2,y,w,2);c.fillStyle='rgba(0,0,0,.18)';c.fillRect(base,y,w/2,lh+.5);
+  c.strokeStyle='rgba(90,60,20,.35)';c.lineWidth=1;for(let k=1;k<Math.floor(w/28);k++){c.beginPath();c.moveTo(base-w/2+k*28,y);c.lineTo(base-w/2+k*28,y+lh);c.stroke()}}
+ if(L>=N){c.fillStyle='#ffd36b';c.beginPath();c.moveTo(base-bw/(N)/2,gy-N*lh);c.lineTo(base,gy-N*lh-18);c.lineTo(base+bw/N/2,gy-N*lh);c.fill()}
+ else{// scaffolding
+  const topw=bw*(1-L/N);c.strokeStyle='#6a4a22';c.lineWidth=2;c.beginPath();c.moveTo(base-topw/2,gy-L*lh);c.lineTo(base-topw/2,gy-(L+1)*lh-6);c.moveTo(base+topw/2,gy-L*lh);c.lineTo(base+topw/2,gy-(L+1)*lh-6);c.moveTo(base-topw/2,gy-(L+1)*lh-6);c.lineTo(base+topw/2,gy-(L+1)*lh-6);c.stroke()}
+ // workers dragging blocks along ramp
+ const nw=L<N?5:2;for(let i=0;i<nw;i++){const p=((t/3500+i/nw)%1),x=base+bw/2+80-p*(90+L*bw/N/2),y=gy-p*L*lh;
+  c.fillStyle='#d0a870';c.fillRect(x-6,y-8,12,8);c.fillStyle='#e0b080';c.beginPath();c.arc(x-12,y-12,3.2,0,7);c.fill();c.fillStyle=['#c0392b','#f1c40f','#ecf0f1'][i%3];c.fillRect(x-14,y-9,5,9);c.strokeStyle='#5a3a1a';c.beginPath();c.moveTo(x-9,y-6);c.lineTo(x-6,y-4);c.stroke()}
+ c.fillStyle='rgba(0,0,0,.22)';c.fillRect(0,gy,W2,3);
+ for(let i=0;i<4;i++){const x=40+i*35;c.fillStyle='#8a5a2a';c.fillRect(x,gy-14,3,14);c.fillStyle='#3a8a3a';c.fillRect(x-7,gy-20,17,5)}}
+function showPyr(){const L=S.pyr||0,N=12;
+ const ok=S.res.stone>=PYR_COST.stone&&S.res.wood>=PYR_COST.wood&&S.res.gold>=PYR_COST.gold;
+ const tiers=[[4,'+1 ثقافة/يوم'],[8,'+2 ثقافة +1.5 ذهب/يوم'],[12,'+5 ثقافة +3 ذهب/يوم +100 ثقافة فورية']];
+ showModal('<h2>🔺 مشروع الهرم الأكبر</h2><canvas id="pyc" width="640" height="300" style="width:100%;border-radius:10px"></canvas><p>الطبقات: <b>'+L+'/'+N+'</b></p><div style="text-align:right">'+tiers.map(x=>'<div class="small" style="padding:2px 0;opacity:'+(L>=x[0]?1:.55)+'">'+(L>=x[0]?'✅':'🔒')+' عند '+x[0]+' طبقات: '+x[1]+'</div>').join('')+'</div>'+(L<N?'<button onclick="buildPyr()"'+(ok?'':' style="opacity:.6"')+'>🧱 ابنِ طبقة ('+PYR_COST.stone+' حجر + '+PYR_COST.wood+' خشب + '+PYR_COST.gold+' ذهب)</button>':'<p>🏆 اكتمل الهرم الأكبر!</p>')+'<button onclick="closeModal()">إغلاق</button>');
+ const cv=$('#pyc');if(!cv)return;pyrDraw(cv,performance.now(),L);
+ const iv=setInterval(()=>{const q=$('#pyc');if(!q||q!==cv){clearInterval(iv);return}pyrDraw(cv,performance.now(),S.pyr||0)},90)}
+function buildPyr(){const L=S.pyr||0;if(L>=12)return;if(S.res.stone<PYR_COST.stone||S.res.wood<PYR_COST.wood||S.res.gold<PYR_COST.gold){toast('⚠️ لا تكفي الموارد (حجر/خشب/ذهب)');return}
+ S.res.stone-=PYR_COST.stone;S.res.wood-=PYR_COST.wood;S.res.gold-=PYR_COST.gold;S.pyr=L+1;sfx('build');
+ if(S.pyr===4||S.pyr===8)toast('🔺 بركة جديدة من الهرم ('+S.pyr+' طبقات)');
+ if(S.pyr===12){S.res.culture+=100;addLog('🔺 اكتمل الهرم الأكبر!');hist('اكتمال الهرم الأكبر');toast('🏆 اكتمل الهرم الأكبر!');sfx('win')}
+ renderAll();save();showPyr()}
 let _tref=null;
 function adj2(t,types){const i=S.tiles.indexOf(t);const x=i%W,y=(i/W)|0;return adj(x,y,types)}
 function tick(){
@@ -1189,7 +1223,7 @@ function renderPanel(force){
   }else if(tab==='log'){
     h='<div class="card" style="flex-basis:100%"><b>📖 دفتر التاريخ</b><div class="small">'+((S.hist||[]).join('<br>')||'لا أحداث بعد')+'</div></div><div class="small" style="margin-top:6px"><b>السجل:</b><br>'+S.log.map(x=>'• '+x).join('<br>')+'</div>';
   }else if(tab==='menu'){
-    h='<div class="grid"><div class="card"><b>⚙️ القائمة</b><button data-m="help">كيف ألعب؟</button><button data-m="mute">'+(muted?'🔇 تشغيل الصوت':'🔊 كتم الصوت')+'</button><button data-m="cname">✏️ اسم المدينة</button><button data-m="ach">🏆 الإنجازات</button><button data-m="tree">🌳 شجرة التقنيات</button><button data-m="camp">🎖️ الحملة</button><button data-m="card">📤 بطاقة النتيجة</button><button data-m="ruler">👑 الحاكم والأسرة</button><button data-m="faith">🏺 المعبد والآلهة</button><button data-m="egypt">🗺️ خريطة مصر</button><button data-m="fleet">⛵ الأسطول</button><button data-m="gen">🎖️ القائد</button><button data-m="tmap">🗺️ خريطة التقنيات</button><button data-m="stats">📈 الإحصائيات</button><button data-m="score">🏅 تفاصيل النقاط</button><button data-m="save">حفظ الآن</button><button data-m="new">لعبة جديدة</button><button data-m="dyn">👑 أسرة جديدة (2000 نقطة)</button><div class="small">رضا الشعب: '+happy()+'/100 (المعابد والمسلات تزيده، الجوع والاكتظاظ والغارات تنقصه)</div><div class="small">بذرة الخريطة: '+S.seed+'</div><div class="small">الصعوبة الحالية: '+['سهل','عادي','صعب'][S.diff===undefined?1:S.diff]+'</div></div><div class="card"><b>💾 خانات الحفظ</b>'+[1,2,3].map(i=>'<div class="small">'+i+': '+slotInfo(i)+'</div><div style="display:flex;gap:4px"><button data-slot="'+i+'" data-act="s">حفظ</button><button data-slot="'+i+'" data-act="l">تحميل</button></div>').join('')+'</div><div class="card" style="flex-basis:100%"><b>📊 الإحصاءات</b><canvas id="stc" width="300" height="120" style="width:100%;border-radius:6px"></canvas><div class="small"><span style="color:#7bc96f">■ السكان</span> <span style="color:#e8c13d">■ الغذاء</span> <span style="color:#fff">■ الذهب</span> <span style="color:#c06bd1">■ الثقافة</span></div></div><div class="card"><b>⚙️ الإعدادات</b><button data-m="music">'+(musicOn?'🎵 الموسيقى: تعمل':'🎵 الموسيقى: متوقفة')+'</button><button data-m="fontp">🔠 تكبير الخط</button><button data-m="fontm">🔡 تصغير الخط</button></div><div class="card"><b>🏆 النتيجة: '+S.score+'</b><div class="small">أيام: '+S.day+' | سكان: '+Math.floor(S.pop)+' | علوم: '+Object.keys(S.techs).length+'/'+Object.keys(TECH).length+'</div></div></div><div class="card" style="flex-basis:100%"><b>🏆 شروط النصر</b><div class="small">'+WINS.map(w=>(S.won&&S.won[w.id]?'✅ ':'⬜ ')+w.t+': '+w.d).join('<br>')+'</div></div><div class="card" style="flex-basis:100%"><b>🏅 الإنجازات</b><div class="small">'+ACH.map(a=>(S.ach&&S.ach[a.id]?'✅ ':'⬜ ')+a.t+' ('+a.d+')').join('<br>')+'</div></div></div>';
+    h='<div class="grid"><div class="card"><b>⚙️ القائمة</b><button data-m="help">كيف ألعب؟</button><button data-m="mute">'+(muted?'🔇 تشغيل الصوت':'🔊 كتم الصوت')+'</button><button data-m="cname">✏️ اسم المدينة</button><button data-m="ach">🏆 الإنجازات</button><button data-m="tree">🌳 شجرة التقنيات</button><button data-m="camp">🎖️ الحملة</button><button data-m="card">📤 بطاقة النتيجة</button><button data-m="ruler">👑 الحاكم والأسرة</button><button data-m="pyr">🔺 مشروع الهرم الأكبر</button><button data-m="faith">🏺 المعبد والآلهة</button><button data-m="egypt">🗺️ خريطة مصر</button><button data-m="fleet">⛵ الأسطول</button><button data-m="gen">🎖️ القائد</button><button data-m="tmap">🗺️ خريطة التقنيات</button><button data-m="stats">📈 الإحصائيات</button><button data-m="score">🏅 تفاصيل النقاط</button><button data-m="save">حفظ الآن</button><button data-m="new">لعبة جديدة</button><button data-m="dyn">👑 أسرة جديدة (2000 نقطة)</button><div class="small">رضا الشعب: '+happy()+'/100 (المعابد والمسلات تزيده، الجوع والاكتظاظ والغارات تنقصه)</div><div class="small">بذرة الخريطة: '+S.seed+'</div><div class="small">الصعوبة الحالية: '+['سهل','عادي','صعب'][S.diff===undefined?1:S.diff]+'</div></div><div class="card"><b>💾 خانات الحفظ</b>'+[1,2,3].map(i=>'<div class="small">'+i+': '+slotInfo(i)+'</div><div style="display:flex;gap:4px"><button data-slot="'+i+'" data-act="s">حفظ</button><button data-slot="'+i+'" data-act="l">تحميل</button></div>').join('')+'</div><div class="card" style="flex-basis:100%"><b>📊 الإحصاءات</b><canvas id="stc" width="300" height="120" style="width:100%;border-radius:6px"></canvas><div class="small"><span style="color:#7bc96f">■ السكان</span> <span style="color:#e8c13d">■ الغذاء</span> <span style="color:#fff">■ الذهب</span> <span style="color:#c06bd1">■ الثقافة</span></div></div><div class="card"><b>⚙️ الإعدادات</b><button data-m="music">'+(musicOn?'🎵 الموسيقى: تعمل':'🎵 الموسيقى: متوقفة')+'</button><button data-m="fontp">🔠 تكبير الخط</button><button data-m="fontm">🔡 تصغير الخط</button></div><div class="card"><b>🏆 النتيجة: '+S.score+'</b><div class="small">أيام: '+S.day+' | سكان: '+Math.floor(S.pop)+' | علوم: '+Object.keys(S.techs).length+'/'+Object.keys(TECH).length+'</div></div></div><div class="card" style="flex-basis:100%"><b>🏆 شروط النصر</b><div class="small">'+WINS.map(w=>(S.won&&S.won[w.id]?'✅ ':'⬜ ')+w.t+': '+w.d).join('<br>')+'</div></div><div class="card" style="flex-basis:100%"><b>🏅 الإنجازات</b><div class="small">'+ACH.map(a=>(S.ach&&S.ach[a.id]?'✅ ':'⬜ ')+a.t+' ('+a.d+')').join('<br>')+'</div></div></div>';
   }
   const sc=panel.scrollTop;panel.innerHTML=h;panel.scrollTop=sc;if(tab==='menu')drawStats();if(tab==='army')drawUnits();
 }
@@ -1226,6 +1260,7 @@ panel.addEventListener('click',e=>{
   else if(b.dataset.m==='fleet'){showFleet()}
   else if(b.dataset.m==='egypt'){showEgypt()}
   else if(b.dataset.m==='faith'){showFaith()}
+  else if(b.dataset.m==='pyr'){showPyr()}
   else if(b.dataset.m==='stats'){showStats()}
   else if(b.dataset.m==='camp'){showCamp()}
   else if(b.dataset.m==='card'){showCardPreview()}
@@ -1543,7 +1578,7 @@ function init(){
   if(!S.seenIntro){S.seenIntro=true;showTut(0)}
   requestAnimationFrame(loop);
 }
-window.__civ={showFaith,chooseGod,doRitual,godMul,faithTick,GODS,showEgypt,attackProv,provCan,provBonus,PROV,showFleet,buyShip,fleetTick,riverPath,showGen,genXp,genLose,genTick,showTechMap,chainTick,chainPick,showChain,CHAINS,sceneURL,showRuler,crown,dynTick,ensureRuler,TRAITS,get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,doEnvoy,doDeal,doPact,doSpy,doAlly,doGift,doTribute,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
+window.__civ={showPyr,buildPyr,showFaith,chooseGod,doRitual,godMul,faithTick,GODS,showEgypt,attackProv,provCan,provBonus,PROV,showFleet,buyShip,fleetTick,riverPath,showGen,genXp,genLose,genTick,showTechMap,chainTick,chainPick,showChain,CHAINS,sceneURL,showRuler,crown,dynTick,ensureRuler,TRAITS,get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,doEnvoy,doDeal,doPact,doSpy,doAlly,doGift,doTribute,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
 document.addEventListener('keydown',e=>{
   if(!S||e.ctrlKey||e.metaKey||e.altKey)return;const tg=e.target&&e.target.tagName;if(tg==='INPUT'||tg==='TEXTAREA')return;
   const modalOpen=$('#modal').style.display==='flex';
