@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v14';
+const SAVE='nile-civ-v15';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -352,7 +352,7 @@ function rates(){
       case 'abusimbel':cul+=5;break;
     }
   }
-  sci+=.35+S.pop*.01;
+  sci+=.5+S.pop*.015+countB('library')*.3;
   gold+=S.pop*.04*adm;
   if(hasTech('mathematics'))sci*=1.15;if(hasTech('banking'))gold*=1.25;if(hasTech('law'))cul*=1.2;if(hasTech('philosophy')){cul*=1.3;sci*=1.3}if(hasTech('shipbuilding'))gold+=countB('port')*.5;
   if(S.storm&&S.day<S.storm){food*=.9;wood*=.9;stone*=.9}
