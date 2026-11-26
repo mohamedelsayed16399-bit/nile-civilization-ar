@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v49';
+const SAVE='nile-civ-v50';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -1078,6 +1078,38 @@ function drawOS(cv){const c=cv.getContext('2d');
  c.fillStyle='rgba(60,200,90,.85)';const zw=OS.zone*(x1-x0);c.fillRect(x0+OS.zc*(x1-x0)-zw/2,y-14,zw,28);
  const nx=x0+OS.pos*(x1-x0);c.fillStyle='#fff';c.beginPath();c.moveTo(nx,y-26);c.lineTo(nx-9,y-42);c.lineTo(nx+9,y-42);c.fill();c.fillRect(nx-2,y-26,4,52);
  c.font='13px sans-serif';c.fillStyle='#fff';c.fillText('ريشة ماعت',60,100);c.fillText('قلبك',540,100);c.fillText('فضيلتك: '+OS.v,300,24)}
+
+// ===== Festival rhythm parade (round 50) =====
+let RH=null,_rhRaf=0;
+const RH_LANES=['🥁','🎺','🪘'],RH_COL=['#e8742a','#e8c13d','#5ac0e8'];
+function rhStart(){const cd=(S.rhAt||0)-S.day;if(cd>0){toast('⏳ الاحتفال القادم بعد '+cd+' يوم');return}
+ const notes=[];let t=1.6;const n=28+Math.min(14,Math.floor(S.res.culture/150));let seed=(S.seed||7)+S.day;const rn=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
+ for(let i=0;i<n;i++){notes.push({t,l:Math.floor(rn()*3),res:0});t+=.55+rn()*.45}
+ RH={notes,T:0,hit:0,miss:0,combo:0,best:0,done:false,end:t+1.2,fb:'',fbT:0};rhShow()}
+function rhShow(){
+ showModal('<h2>🥁 موكب الاحتفال</h2><div class="small">اضغط الطبلة المناسبة لحظة وصول النغمة إلى الخط الذهبي. 70% دقة = احتفال ملكي لمدة 20 يوماً.</div><canvas id="rhc" width="600" height="360" style="width:100%;border-radius:10px;background:#1b1410"></canvas><div style="display:flex;gap:6px;margin-top:6px">'+RH_LANES.map((x,i)=>'<button style="flex:1;font-size:26px;padding:14px 0;background:'+RH_COL[i]+'" onpointerdown="rhTap('+i+')">'+x+'</button>').join('')+'</div><button onclick="rhClose()">إلغاء</button>');
+ cancelAnimationFrame(_rhRaf);let last=performance.now();
+ const loop=t=>{const c=$('#rhc');if(!c||!RH||RH.done)return;const dt=Math.min(.05,(t-last)/1000);last=t;rhStep(dt);if(RH&&!RH.done){drawRH(c);_rhRaf=requestAnimationFrame(loop)}};_rhRaf=requestAnimationFrame(loop)}
+function rhStep(dt){RH.T+=dt;for(const n of RH.notes)if(!n.res&&RH.T-n.t>.28){n.res=-1;RH.miss++;RH.combo=0;RH.fb='فاتت';RH.fbT=RH.T}
+ if(RH.T>=RH.end)rhFinish()}
+function rhTap(l){if(!RH||RH.done)return;let best=null,bd=.28;for(const n of RH.notes)if(!n.res&&n.l===l){const d=Math.abs(RH.T-n.t);if(d<bd){bd=d;best=n}}
+ if(best){best.res=1;RH.hit++;RH.combo++;RH.best=Math.max(RH.best,RH.combo);RH.fb=bd<.1?'ممتاز!':'جيد';RH.fbT=RH.T;sfx('build')}else{RH.combo=0;RH.fb='خطأ';RH.fbT=RH.T}}
+function rhFinish(){if(!RH||RH.done)return;RH.done=true;cancelAnimationFrame(_rhRaf);const tot=RH.notes.length,acc=RH.hit/tot,pct=Math.round(acc*100);
+ S.rhAt=S.day+40;S.rhBest=Math.max(S.rhBest||0,pct);const cul=Math.floor(acc*60),gold=Math.floor(acc*100);S.res.culture+=cul;S.res.gold+=gold;let extra='';
+ if(acc>=.7){S.fest={n:'موكب الاحتفال الملكي',until:S.day+20,ico:'🥁'};extra='<p><b>🎉 احتفال ملكي لمدة 20 يوماً!</b> (يزيد الرضا والإيمان)</p>'}
+ addLog('🥁 موكب الاحتفال: دقة '+pct+'%');if(pct>=95)hist('موكب احتفال مثالي');
+ const stars=acc>=.95?3:acc>=.8?2:acc>=.7?1:0;
+ showModal('<h2>🥁 انتهى الموكب</h2><div style="font-size:40px">'+'⭐'.repeat(stars)+'☆'.repeat(3-stars)+'</div><p>الدقة: <b>'+pct+'%</b> · أفضل تتابع: <b>'+RH.best+'</b> · أخطأت: '+RH.miss+'</p>'+extra+'<p class="small">+'+cul+' ثقافة · +'+gold+' ذهب</p><button onclick="closeModal()">إغلاق</button>');RH=null;renderAll();save()}
+function rhClose(){cancelAnimationFrame(_rhRaf);RH=null;closeModal()}
+function drawRH(cv){const c=cv.getContext('2d');
+ let g=c.createLinearGradient(0,0,0,360);g.addColorStop(0,'#3a1a4a');g.addColorStop(1,'#a8602a');c.fillStyle=g;c.fillRect(0,0,600,360);
+ const lw=160,x0=60,hy=300,spd=170;
+ for(let i=0;i<3;i++){c.fillStyle='rgba(255,255,255,.06)';c.fillRect(x0+(2-i)*(lw+10),0,lw,360);c.fillStyle=RH_COL[i];c.globalAlpha=.35;c.fillRect(x0+(2-i)*(lw+10),hy-8,lw,16);c.globalAlpha=1}
+ c.strokeStyle='#ffd36b';c.lineWidth=3;c.beginPath();c.moveTo(x0,hy);c.lineTo(x0+3*lw+20,hy);c.stroke();
+ c.textAlign='center';c.textBaseline='middle';c.font='28px sans-serif';
+ for(const n of RH.notes){if(n.res===1)continue;const y=hy-(n.t-RH.T)*spd;if(y<-30||y>370)continue;c.globalAlpha=n.res===-1?.3:1;c.fillStyle=RH_COL[n.l];c.beginPath();c.arc(x0+(2-n.l)*(lw+10)+lw/2,y,22,0,7);c.fill();c.fillStyle='#fff';c.fillText(RH_LANES[n.l],x0+(2-n.l)*(lw+10)+lw/2,y+1);c.globalAlpha=1}
+ c.font='bold 16px sans-serif';c.fillStyle='#fff';c.fillText('تتابع '+RH.combo+'  ·  إصابات '+RH.hit+'/'+RH.notes.length,300,22);
+ if(RH.T-RH.fbT<.6){c.font='bold 26px sans-serif';c.fillStyle=RH.fb==='ممتاز!'?'#7bff7b':RH.fb==='جيد'?'#ffd36b':'#ff6b6b';c.fillText(RH.fb,300,hy-60)}}
 let _tref=null;
 function adj2(t,types){const i=S.tiles.indexOf(t);const x=i%W,y=(i/W)|0;return adj(x,y,types)}
 function tick(){
@@ -1408,7 +1440,7 @@ function renderPanel(force){
   }else if(tab==='log'){
     h='<div class="card" style="flex-basis:100%"><b>📖 دفتر التاريخ</b><div class="small">'+((S.hist||[]).join('<br>')||'لا أحداث بعد')+'</div></div><div class="small" style="margin-top:6px"><b>السجل:</b><br>'+S.log.map(x=>'• '+x).join('<br>')+'</div>';
   }else if(tab==='menu'){
-    h='<div class="grid"><div class="card"><b>⚙️ القائمة</b><button data-m="help">كيف ألعب؟</button><button data-m="mute">'+(muted?'🔇 تشغيل الصوت':'🔊 كتم الصوت')+'</button><button data-m="cname">✏️ اسم المدينة</button><button data-m="ach">🏆 الإنجازات</button><button data-m="tree">🌳 شجرة التقنيات</button><button data-m="camp">🎖️ الحملة</button><button data-m="card">📤 بطاقة النتيجة</button><button data-m="ruler">👑 الحاكم والأسرة</button><button data-m="pyr">🔺 مشروع الهرم الأكبر</button><button data-m="faith">🏺 المعبد والآلهة</button><button data-m="egypt">🗺️ خريطة مصر</button><button data-m="osiris">⚖️ محاكمة أوزيريس</button><button data-m="trade">🐪 طرق التجارة</button><button data-m="hosp">🏥 المستشفى والأوبئة</button><button data-m="fleet">⛵ الأسطول</button><button data-m="gen">🎖️ القائد</button><button data-m="tmap">🗺️ خريطة التقنيات</button><button data-m="stats">📈 الإحصائيات</button><button data-m="score">🏅 تفاصيل النقاط</button><button data-m="save">حفظ الآن</button><button data-m="new">لعبة جديدة</button><button data-m="dyn">👑 أسرة جديدة (2000 نقطة)</button><div class="small">رضا الشعب: '+happy()+'/100 (المعابد والمسلات تزيده، الجوع والاكتظاظ والغارات تنقصه)</div><div class="small">بذرة الخريطة: '+S.seed+'</div><div class="small">الصعوبة الحالية: '+['سهل','عادي','صعب'][S.diff===undefined?1:S.diff]+'</div></div><div class="card"><b>💾 خانات الحفظ</b>'+[1,2,3].map(i=>'<div class="small">'+i+': '+slotInfo(i)+'</div><div style="display:flex;gap:4px"><button data-slot="'+i+'" data-act="s">حفظ</button><button data-slot="'+i+'" data-act="l">تحميل</button></div>').join('')+'</div><div class="card" style="flex-basis:100%"><b>📊 الإحصاءات</b><canvas id="stc" width="300" height="120" style="width:100%;border-radius:6px"></canvas><div class="small"><span style="color:#7bc96f">■ السكان</span> <span style="color:#e8c13d">■ الغذاء</span> <span style="color:#fff">■ الذهب</span> <span style="color:#c06bd1">■ الثقافة</span></div></div><div class="card"><b>⚙️ الإعدادات</b><button data-m="music">'+(musicOn?'🎵 الموسيقى: تعمل':'🎵 الموسيقى: متوقفة')+'</button><button data-m="fontp">🔠 تكبير الخط</button><button data-m="fontm">🔡 تصغير الخط</button></div><div class="card"><b>🏆 النتيجة: '+S.score+'</b><div class="small">أيام: '+S.day+' | سكان: '+Math.floor(S.pop)+' | علوم: '+Object.keys(S.techs).length+'/'+Object.keys(TECH).length+'</div></div></div><div class="card" style="flex-basis:100%"><b>🏆 شروط النصر</b><div class="small">'+WINS.map(w=>(S.won&&S.won[w.id]?'✅ ':'⬜ ')+w.t+': '+w.d).join('<br>')+'</div></div><div class="card" style="flex-basis:100%"><b>🏅 الإنجازات</b><div class="small">'+ACH.map(a=>(S.ach&&S.ach[a.id]?'✅ ':'⬜ ')+a.t+' ('+a.d+')').join('<br>')+'</div></div></div>';
+    h='<div class="grid"><div class="card"><b>⚙️ القائمة</b><button data-m="help">كيف ألعب؟</button><button data-m="mute">'+(muted?'🔇 تشغيل الصوت':'🔊 كتم الصوت')+'</button><button data-m="cname">✏️ اسم المدينة</button><button data-m="ach">🏆 الإنجازات</button><button data-m="tree">🌳 شجرة التقنيات</button><button data-m="camp">🎖️ الحملة</button><button data-m="card">📤 بطاقة النتيجة</button><button data-m="ruler">👑 الحاكم والأسرة</button><button data-m="pyr">🔺 مشروع الهرم الأكبر</button><button data-m="faith">🏺 المعبد والآلهة</button><button data-m="egypt">🗺️ خريطة مصر</button><button data-m="rhythm">🥁 موكب الاحتفال</button><button data-m="osiris">⚖️ محاكمة أوزيريس</button><button data-m="trade">🐪 طرق التجارة</button><button data-m="hosp">🏥 المستشفى والأوبئة</button><button data-m="fleet">⛵ الأسطول</button><button data-m="gen">🎖️ القائد</button><button data-m="tmap">🗺️ خريطة التقنيات</button><button data-m="stats">📈 الإحصائيات</button><button data-m="score">🏅 تفاصيل النقاط</button><button data-m="save">حفظ الآن</button><button data-m="new">لعبة جديدة</button><button data-m="dyn">👑 أسرة جديدة (2000 نقطة)</button><div class="small">رضا الشعب: '+happy()+'/100 (المعابد والمسلات تزيده، الجوع والاكتظاظ والغارات تنقصه)</div><div class="small">بذرة الخريطة: '+S.seed+'</div><div class="small">الصعوبة الحالية: '+['سهل','عادي','صعب'][S.diff===undefined?1:S.diff]+'</div></div><div class="card"><b>💾 خانات الحفظ</b>'+[1,2,3].map(i=>'<div class="small">'+i+': '+slotInfo(i)+'</div><div style="display:flex;gap:4px"><button data-slot="'+i+'" data-act="s">حفظ</button><button data-slot="'+i+'" data-act="l">تحميل</button></div>').join('')+'</div><div class="card" style="flex-basis:100%"><b>📊 الإحصاءات</b><canvas id="stc" width="300" height="120" style="width:100%;border-radius:6px"></canvas><div class="small"><span style="color:#7bc96f">■ السكان</span> <span style="color:#e8c13d">■ الغذاء</span> <span style="color:#fff">■ الذهب</span> <span style="color:#c06bd1">■ الثقافة</span></div></div><div class="card"><b>⚙️ الإعدادات</b><button data-m="music">'+(musicOn?'🎵 الموسيقى: تعمل':'🎵 الموسيقى: متوقفة')+'</button><button data-m="fontp">🔠 تكبير الخط</button><button data-m="fontm">🔡 تصغير الخط</button></div><div class="card"><b>🏆 النتيجة: '+S.score+'</b><div class="small">أيام: '+S.day+' | سكان: '+Math.floor(S.pop)+' | علوم: '+Object.keys(S.techs).length+'/'+Object.keys(TECH).length+'</div></div></div><div class="card" style="flex-basis:100%"><b>🏆 شروط النصر</b><div class="small">'+WINS.map(w=>(S.won&&S.won[w.id]?'✅ ':'⬜ ')+w.t+': '+w.d).join('<br>')+'</div></div><div class="card" style="flex-basis:100%"><b>🏅 الإنجازات</b><div class="small">'+ACH.map(a=>(S.ach&&S.ach[a.id]?'✅ ':'⬜ ')+a.t+' ('+a.d+')').join('<br>')+'</div></div></div>';
   }
   const sc=panel.scrollTop;panel.innerHTML=h;panel.scrollTop=sc;if(tab==='menu')drawStats();if(tab==='army')drawUnits();
 }
@@ -1446,7 +1478,7 @@ panel.addEventListener('click',e=>{
   else if(b.dataset.m==='fleet'){showFleet()}
   else if(b.dataset.m==='egypt'){showEgypt()}
   else if(b.dataset.m==='faith'){showFaith()}
-  else if(b.dataset.m==='pyr'){showPyr()}else if(b.dataset.m==='hosp'){showHosp()}else if(b.dataset.m==='trade'){showTrade()}else if(b.dataset.m==='osiris'){osStart()}
+  else if(b.dataset.m==='pyr'){showPyr()}else if(b.dataset.m==='hosp'){showHosp()}else if(b.dataset.m==='trade'){showTrade()}else if(b.dataset.m==='osiris'){osStart()}else if(b.dataset.m==='rhythm'){rhStart()}
   else if(b.dataset.m==='stats'){showStats()}
   else if(b.dataset.m==='camp'){showCamp()}
   else if(b.dataset.m==='card'){showCardPreview()}
@@ -1764,7 +1796,7 @@ function init(){
   if(!S.seenIntro){S.seenIntro=true;showTut(0)}
   requestAnimationFrame(loop);
 }
-window.__civ={osStart,osStop,virtue,osFinish,getOS:()=>OS,showTrade,buyRoute,tradeTick,tradeIncome,trLv,TR,revoltTick,buyGarr,calmProv,unrest,garr,showHosp,buildHosp,quarantine,plagueTick,plgCut,planBattle,pickForm,stanceOf,beats,doAttack0,attackProv0,showMedals,ACH,showPyr,buildPyr,showFaith,chooseGod,doRitual,godMul,faithTick,GODS,showEgypt,attackProv,provCan,provBonus,PROV,showFleet,buyShip,fleetTick,riverPath,showGen,genXp,genLose,genTick,showTechMap,chainTick,chainPick,showChain,CHAINS,sceneURL,showRuler,crown,dynTick,ensureRuler,TRAITS,get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,doEnvoy,doDeal,doPact,doSpy,doAlly,doGift,doTribute,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
+window.__civ={rhStart,rhTap,rhStep,rhFinish,getRH:()=>RH,osStart,osStop,virtue,osFinish,getOS:()=>OS,showTrade,buyRoute,tradeTick,tradeIncome,trLv,TR,revoltTick,buyGarr,calmProv,unrest,garr,showHosp,buildHosp,quarantine,plagueTick,plgCut,planBattle,pickForm,stanceOf,beats,doAttack0,attackProv0,showMedals,ACH,showPyr,buildPyr,showFaith,chooseGod,doRitual,godMul,faithTick,GODS,showEgypt,attackProv,provCan,provBonus,PROV,showFleet,buyShip,fleetTick,riverPath,showGen,genXp,genLose,genTick,showTechMap,chainTick,chainPick,showChain,CHAINS,sceneURL,showRuler,crown,dynTick,ensureRuler,TRAITS,get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,doEnvoy,doDeal,doPact,doSpy,doAlly,doGift,doTribute,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
 document.addEventListener('keydown',e=>{
   if(!S||e.ctrlKey||e.metaKey||e.altKey)return;const tg=e.target&&e.target.tagName;if(tg==='INPUT'||tg==='TEXTAREA')return;
   const modalOpen=$('#modal').style.display==='flex';
