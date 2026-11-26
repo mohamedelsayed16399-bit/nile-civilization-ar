@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v47';
+const SAVE='nile-civ-v48';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -1013,6 +1013,45 @@ function revoltTick(){const P=provs();S.unr=S.unr||{};S.garr=S.garr||{};
   if(unrest(k)>=100){const def=powerOf(S.army)*(1+garr(k)*.25);const rebel=PROV[k].str*1.1;
    if(def>rebel*1.2){S.unr[k]=40;for(const u in S.army)S.army[u]=Math.floor(S.army[u]*.93);addLog('🛡️ جيشك أخمد ثورة في '+PROV[k].n);toast('🛡️ أُخمدت ثورة '+PROV[k].n);genXp&&genXp(8)}
    else{delete P[k];S.unr[k]=0;S.garr[k]=0;S.res.culture=Math.max(0,S.res.culture-15);addLog('🔥 ثارت '+PROV[k].n+' وخرجت من حكمك!');hist('ثورة في '+PROV[k].n);toast('🔥 ثارت '+PROV[k].n+'!');sfx('bad');if(S.speed>1)S.speed=1}}}}
+
+// ===== Trade routes with caravans (round 48) =====
+const TR={
+ kush:{n:'كوش (النوبة)',x:330,y:380,g:3,f:0,gold:'ذهب وعاج',cost:80,risk:.12,col:'#d9a030'},
+ punt:{n:'بونت',x:560,y:350,g:2,f:2,gold:'بخور وعطور',cost:140,risk:.2,col:'#c05aa0'},
+ canaan:{n:'كنعان',x:470,y:90,g:3,f:1,gold:'زيت وخمور',cost:100,risk:.1,col:'#5aa0c0'},
+ crete:{n:'كريت',x:200,y:50,g:4,f:0,gold:'فخار وفضة',cost:180,risk:.15,col:'#5ac07a'},
+ babylon:{n:'بابل',x:590,y:120,g:6,f:0,gold:'قصدير وأقمشة',cost:320,risk:.25,col:'#c0605a'}};
+const TR_PATH={kush:[[330,380],[345,300],[352,190],[340,140]],punt:[[560,350],[480,300],[418,230],[352,190],[340,140]],canaan:[[470,90],[420,110],[340,140]],crete:[[200,50],[270,90],[340,140]],babylon:[[590,120],[520,100],[430,110],[340,140]]};
+function trLv(k){S.trade=S.trade||{};return S.trade[k]||0}
+function trRate(k){const L=trLv(k);if(!L)return 0;return TR[k].g*L*.6*(1+countB('market')*.04)*(S.treaty?1.1:1)*(S.cvAt&&S.day<S.cvAt?.6:1)}
+function trFood(k){return TR[k].f*trLv(k)*.3}
+function trCost(k){return Math.floor(TR[k].cost*(trLv(k)+1)*(trLv(k)?1.3:1))}
+function trUnlocked(k){return S.pop>=({kush:15,canaan:20,crete:30,punt:40,babylon:60})[k]}
+function buyRoute(k){if(!trUnlocked(k)){toast('🔒 تحتاج سكاناً أكثر');return}const L=trLv(k);if(L>=3){toast('الطريق في أعلى مستوى');return}const c=trCost(k);if(S.res.gold<c){toast('⚠️ الذهب لا يكفي');return}
+ S.res.gold-=c;S.trade[k]=L+1;S.res.culture+=L?3:10;sfx('build');addLog('🐪 '+(L?'ترقية':'فتح')+' طريق التجارة إلى '+TR[k].n);if(!L)hist('طريق تجارة إلى '+TR[k].n);renderAll();save();showTrade(k)}
+function tradeIncome(){let g=0,f=0;for(const k in TR){g+=trRate(k);f+=trFood(k)}return {g,f}}
+function tradeTick(){S.trade=S.trade||{};const inc=tradeIncome();S.res.gold+=inc.g;S.res.food+=inc.f;
+ for(const k in TR){if(trLv(k)&&!(S.cvAt&&S.day<S.cvAt)&&Math.random()<TR[k].risk*.012*(1-Math.min(.6,defense()/4000))){S.cvAt=S.day+10;const loss=Math.floor(trRate(k)*8);S.res.gold=Math.max(0,S.res.gold-loss);addLog('🏴‍☠️ لصوص هاجموا قافلة '+TR[k].n+' (-'+loss+' ذهب)');toast('🏴‍☠️ هجوم على قافلة '+TR[k].n);sfx('bad');break}}}
+let _trSel=null,_trRaf=0;
+function showTrade(sel){_trSel=sel||_trSel;const inc=tradeIncome();
+ showModal('<h2>🐪 طرق التجارة</h2><canvas id="trc" width="640" height="420" style="width:100%;border-radius:10px;background:#1b1410"></canvas><div class="small" style="margin:6px 0">دخل التجارة: <b>+'+inc.g.toFixed(1)+' ذهب/يوم</b>'+(inc.f?' · +'+inc.f.toFixed(1)+' غذاء':'')+(S.cvAt&&S.day<S.cvAt?' · ⚠️ اللصوص يضعفون القوافل':'')+'</div><div id="tri" class="small" style="min-height:60px"></div><button onclick="closeModal()">إغلاق</button>');
+ const cv=$('#trc');cv.onclick=e=>{const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*(640/r.width),y=(e.clientY-r.top)*(420/r.height);let hit=null,bd=40;for(const k in TR){const d=Math.hypot(TR[k].x-x,TR[k].y-y);if(d<bd){bd=d;hit=k}}if(hit){_trSel=hit;trInfo()}};
+ trInfo();cancelAnimationFrame(_trRaf);const t0=performance.now();
+ const loop=()=>{const c2=$('#trc');if(!c2||$('#modal').style.display==='none')return;drawTrade(c2,(performance.now()-t0)/1000);_trRaf=requestAnimationFrame(loop)};loop()}
+function trInfo(){const k=_trSel,el=$('#tri');if(!el)return;if(!k){el.innerHTML='اضغط على مدينة لفتح طريق تجارة إليها.';return}const t=TR[k],L=trLv(k);
+ el.innerHTML='<b>'+t.n+'</b> · '+t.gold+' · مستوى '+L+'/3'+(L?' · +'+trRate(k).toFixed(1)+' ذهب/يوم':'')+'<br>خطر اللصوص: '+Math.round(t.risk*100)+'%'+(trUnlocked(k)?'':' · 🔒 يتطلب '+({kush:15,canaan:20,crete:30,punt:40,babylon:60})[k]+' نسمة')+(L<3?'<br><button onclick="buyRoute(\''+k+'\')">'+(L?'⬆️ ترقية القافلة':'🐪 فتح الطريق')+' ('+trCost(k)+' ذهب)</button>':'')}
+function drawTrade(cv,t){const c=cv.getContext('2d');
+ let g=c.createLinearGradient(0,0,0,420);g.addColorStop(0,'#2b6cb0');g.addColorStop(.2,'#d9b878');g.addColorStop(1,'#b88a48');c.fillStyle=g;c.fillRect(0,0,640,420);
+ c.fillStyle='rgba(120,80,30,.14)';for(let i=0;i<26;i++){c.beginPath();c.ellipse((i*89)%640,120+((i*57)%290),24,5,0,0,7);c.fill()}
+ c.strokeStyle='#2b9ad6';c.lineWidth=9;c.lineCap='round';c.beginPath();c.moveTo(335,420);c.lineTo(345,300);c.lineTo(352,190);c.lineTo(340,140);c.stroke();
+ for(const k in TR){const P=TR_PATH[k],L=trLv(k);c.setLineDash(L?[]:[5,6]);c.strokeStyle=L?TR[k].col:'rgba(60,30,10,.45)';c.lineWidth=L?3+L:2;c.beginPath();c.moveTo(P[0][0],P[0][1]);for(const q of P)c.lineTo(q[0],q[1]);c.stroke();c.setLineDash([]);
+  for(let i=0;i<L*2;i++){const u=((t*.12*(1+L*.1)+i/(L*2))%1);const seg=u*(P.length-1),a=Math.floor(seg),f=seg-a;const x=P[a][0]+(P[a+1][0]-P[a][0])*f,y=P[a][1]+(P[a+1][1]-P[a][1])*f;
+   c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(x,y+6,9,3,0,0,7);c.fill();c.fillStyle=TR[k].col;c.strokeStyle='#fff';c.lineWidth=1.5;c.beginPath();c.arc(x,y,6,0,7);c.fill();c.stroke();c.font='12px sans-serif';c.textAlign='center';c.fillStyle='#fff';c.fillText('🐪',x,y-9)}}
+ c.textAlign='center';c.textBaseline='middle';
+ const nodes=[['memphis',340,140,'منف','#3a9a4a']].concat(Object.keys(TR).map(k=>[k,TR[k].x,TR[k].y,TR[k].n,trLv(k)?TR[k].col:trUnlocked(k)?'#e8742a':'#6a6a6a']));
+ for(const [k,x,y,n,col] of nodes){if(_trSel===k){c.strokeStyle='#fff';c.lineWidth=3;c.beginPath();c.arc(x,y,24,0,7);c.stroke()}
+  c.fillStyle=col;c.beginPath();c.arc(x,y,18,0,7);c.fill();c.strokeStyle='#fff3d0';c.lineWidth=2;c.stroke();c.fillStyle='#fff';c.font='16px sans-serif';c.fillText(k==='memphis'?'👑':trLv(k)?'🏺':trUnlocked(k)?'➕':'🔒',x,y+1);
+  c.font='bold 12px sans-serif';c.lineWidth=3;c.strokeStyle='rgba(0,0,0,.7)';c.strokeText(n,x,y+30);c.fillStyle='#fff';c.fillText(n,x,y+30)}}
 let _tref=null;
 function adj2(t,types){const i=S.tiles.indexOf(t);const x=i%W,y=(i/W)|0;return adj(x,y,types)}
 function tick(){
@@ -1025,7 +1064,7 @@ function tick(){
   // research
   if(S.research){S.rp+=Math.max(0,S.res.science);S.res.science=0;const c=TECH[S.research].c;if(S.rp>=c){S.techs[S.research]=true;addLog('اكتشفت: '+TECH[S.research].n);sfx('tech');hist('اكتشاف '+TECH[S.research].n);toast('🔬 تم اكتشاف '+TECH[S.research].n);S.rp-=c;S.research=null;if(era()>S.lastEra){S.lastEra=era();hist('دخلت عصر '+ERA[era()]);showModal('<h2>عصر جديد!</h2><p>دخلت حضارتك: <b>'+ERA[era()]+'</b></p><button onclick="closeModal()">متابعة</button>')}}}
   S.day++;
-  try{dynTick();chainTick();genTick();fleetTick();faithTick();plagueTick();plgBadge();revoltTick()}catch(e){}
+  try{dynTick();chainTick();genTick();fleetTick();faithTick();plagueTick();plgBadge();revoltTick();tradeTick()}catch(e){}
   if(S.day%7===0){let shown=0;const lst=[];for(let i=0;i<S.tiles.length;i++){const b=S.tiles[i].b;if(b&&['farm','market','library','quarry','lumber','temple','school','port','fishery','workshop'].includes(b))lst.push(i)}
     const pk=S.day*7919;for(let q=0;q<Math.min(3,lst.length);q++){const i=lst[(pk+q*131)%lst.length],b=S.tiles[i].b,lv=1+S.tiles[i].lvl*.5;const o={farm:['#9fe39a',2.5],lumber:['#d8a96a',2.2],quarry:['#c9c9d0',2],market:['#ffd36b',1.4],library:['#8fc7ff',1.5],temple:['#e0a0ff',1.2],school:['#8fc7ff',2.2],port:['#ffd36b',1.8],fishery:['#9fe39a',2.3],workshop:['#ffd36b',1.1]}[b];fxText(i%W,(i/W)|0,'+'+Math.round(o[1]*lv*7),o[0])}}
   if(S.pop<=3&&S.res.food<=0&&!S.flags.collapsed&&S.day>60){S.flags.collapsed=1;hist('انهارت المدينة');S.speed=0;showModal('<h2>🏚️ انهارت المدينة</h2><p>الجوع قضى على معظم السكان. تعلّم من الدرس: ابنِ المزارع والمصائد مبكراً وخزّن الغذاء.</p><p class="small">النقاط: '+S.score+'</p><button onclick="closeModal();S.flags.collapsed=0;S.res.food+=80;S.pop+=8;S.speed=1">إنقاذ المدينة (مساعدة من النهر +80 غذاء)</button><button onclick="closeModal();newGame(0,S.diff);renderAll();save()">ابدأ من جديد</button>')}
@@ -1343,7 +1382,7 @@ function renderPanel(force){
   }else if(tab==='log'){
     h='<div class="card" style="flex-basis:100%"><b>📖 دفتر التاريخ</b><div class="small">'+((S.hist||[]).join('<br>')||'لا أحداث بعد')+'</div></div><div class="small" style="margin-top:6px"><b>السجل:</b><br>'+S.log.map(x=>'• '+x).join('<br>')+'</div>';
   }else if(tab==='menu'){
-    h='<div class="grid"><div class="card"><b>⚙️ القائمة</b><button data-m="help">كيف ألعب؟</button><button data-m="mute">'+(muted?'🔇 تشغيل الصوت':'🔊 كتم الصوت')+'</button><button data-m="cname">✏️ اسم المدينة</button><button data-m="ach">🏆 الإنجازات</button><button data-m="tree">🌳 شجرة التقنيات</button><button data-m="camp">🎖️ الحملة</button><button data-m="card">📤 بطاقة النتيجة</button><button data-m="ruler">👑 الحاكم والأسرة</button><button data-m="pyr">🔺 مشروع الهرم الأكبر</button><button data-m="faith">🏺 المعبد والآلهة</button><button data-m="egypt">🗺️ خريطة مصر</button><button data-m="hosp">🏥 المستشفى والأوبئة</button><button data-m="fleet">⛵ الأسطول</button><button data-m="gen">🎖️ القائد</button><button data-m="tmap">🗺️ خريطة التقنيات</button><button data-m="stats">📈 الإحصائيات</button><button data-m="score">🏅 تفاصيل النقاط</button><button data-m="save">حفظ الآن</button><button data-m="new">لعبة جديدة</button><button data-m="dyn">👑 أسرة جديدة (2000 نقطة)</button><div class="small">رضا الشعب: '+happy()+'/100 (المعابد والمسلات تزيده، الجوع والاكتظاظ والغارات تنقصه)</div><div class="small">بذرة الخريطة: '+S.seed+'</div><div class="small">الصعوبة الحالية: '+['سهل','عادي','صعب'][S.diff===undefined?1:S.diff]+'</div></div><div class="card"><b>💾 خانات الحفظ</b>'+[1,2,3].map(i=>'<div class="small">'+i+': '+slotInfo(i)+'</div><div style="display:flex;gap:4px"><button data-slot="'+i+'" data-act="s">حفظ</button><button data-slot="'+i+'" data-act="l">تحميل</button></div>').join('')+'</div><div class="card" style="flex-basis:100%"><b>📊 الإحصاءات</b><canvas id="stc" width="300" height="120" style="width:100%;border-radius:6px"></canvas><div class="small"><span style="color:#7bc96f">■ السكان</span> <span style="color:#e8c13d">■ الغذاء</span> <span style="color:#fff">■ الذهب</span> <span style="color:#c06bd1">■ الثقافة</span></div></div><div class="card"><b>⚙️ الإعدادات</b><button data-m="music">'+(musicOn?'🎵 الموسيقى: تعمل':'🎵 الموسيقى: متوقفة')+'</button><button data-m="fontp">🔠 تكبير الخط</button><button data-m="fontm">🔡 تصغير الخط</button></div><div class="card"><b>🏆 النتيجة: '+S.score+'</b><div class="small">أيام: '+S.day+' | سكان: '+Math.floor(S.pop)+' | علوم: '+Object.keys(S.techs).length+'/'+Object.keys(TECH).length+'</div></div></div><div class="card" style="flex-basis:100%"><b>🏆 شروط النصر</b><div class="small">'+WINS.map(w=>(S.won&&S.won[w.id]?'✅ ':'⬜ ')+w.t+': '+w.d).join('<br>')+'</div></div><div class="card" style="flex-basis:100%"><b>🏅 الإنجازات</b><div class="small">'+ACH.map(a=>(S.ach&&S.ach[a.id]?'✅ ':'⬜ ')+a.t+' ('+a.d+')').join('<br>')+'</div></div></div>';
+    h='<div class="grid"><div class="card"><b>⚙️ القائمة</b><button data-m="help">كيف ألعب؟</button><button data-m="mute">'+(muted?'🔇 تشغيل الصوت':'🔊 كتم الصوت')+'</button><button data-m="cname">✏️ اسم المدينة</button><button data-m="ach">🏆 الإنجازات</button><button data-m="tree">🌳 شجرة التقنيات</button><button data-m="camp">🎖️ الحملة</button><button data-m="card">📤 بطاقة النتيجة</button><button data-m="ruler">👑 الحاكم والأسرة</button><button data-m="pyr">🔺 مشروع الهرم الأكبر</button><button data-m="faith">🏺 المعبد والآلهة</button><button data-m="egypt">🗺️ خريطة مصر</button><button data-m="trade">🐪 طرق التجارة</button><button data-m="hosp">🏥 المستشفى والأوبئة</button><button data-m="fleet">⛵ الأسطول</button><button data-m="gen">🎖️ القائد</button><button data-m="tmap">🗺️ خريطة التقنيات</button><button data-m="stats">📈 الإحصائيات</button><button data-m="score">🏅 تفاصيل النقاط</button><button data-m="save">حفظ الآن</button><button data-m="new">لعبة جديدة</button><button data-m="dyn">👑 أسرة جديدة (2000 نقطة)</button><div class="small">رضا الشعب: '+happy()+'/100 (المعابد والمسلات تزيده، الجوع والاكتظاظ والغارات تنقصه)</div><div class="small">بذرة الخريطة: '+S.seed+'</div><div class="small">الصعوبة الحالية: '+['سهل','عادي','صعب'][S.diff===undefined?1:S.diff]+'</div></div><div class="card"><b>💾 خانات الحفظ</b>'+[1,2,3].map(i=>'<div class="small">'+i+': '+slotInfo(i)+'</div><div style="display:flex;gap:4px"><button data-slot="'+i+'" data-act="s">حفظ</button><button data-slot="'+i+'" data-act="l">تحميل</button></div>').join('')+'</div><div class="card" style="flex-basis:100%"><b>📊 الإحصاءات</b><canvas id="stc" width="300" height="120" style="width:100%;border-radius:6px"></canvas><div class="small"><span style="color:#7bc96f">■ السكان</span> <span style="color:#e8c13d">■ الغذاء</span> <span style="color:#fff">■ الذهب</span> <span style="color:#c06bd1">■ الثقافة</span></div></div><div class="card"><b>⚙️ الإعدادات</b><button data-m="music">'+(musicOn?'🎵 الموسيقى: تعمل':'🎵 الموسيقى: متوقفة')+'</button><button data-m="fontp">🔠 تكبير الخط</button><button data-m="fontm">🔡 تصغير الخط</button></div><div class="card"><b>🏆 النتيجة: '+S.score+'</b><div class="small">أيام: '+S.day+' | سكان: '+Math.floor(S.pop)+' | علوم: '+Object.keys(S.techs).length+'/'+Object.keys(TECH).length+'</div></div></div><div class="card" style="flex-basis:100%"><b>🏆 شروط النصر</b><div class="small">'+WINS.map(w=>(S.won&&S.won[w.id]?'✅ ':'⬜ ')+w.t+': '+w.d).join('<br>')+'</div></div><div class="card" style="flex-basis:100%"><b>🏅 الإنجازات</b><div class="small">'+ACH.map(a=>(S.ach&&S.ach[a.id]?'✅ ':'⬜ ')+a.t+' ('+a.d+')').join('<br>')+'</div></div></div>';
   }
   const sc=panel.scrollTop;panel.innerHTML=h;panel.scrollTop=sc;if(tab==='menu')drawStats();if(tab==='army')drawUnits();
 }
@@ -1381,7 +1420,7 @@ panel.addEventListener('click',e=>{
   else if(b.dataset.m==='fleet'){showFleet()}
   else if(b.dataset.m==='egypt'){showEgypt()}
   else if(b.dataset.m==='faith'){showFaith()}
-  else if(b.dataset.m==='pyr'){showPyr()}else if(b.dataset.m==='hosp'){showHosp()}
+  else if(b.dataset.m==='pyr'){showPyr()}else if(b.dataset.m==='hosp'){showHosp()}else if(b.dataset.m==='trade'){showTrade()}
   else if(b.dataset.m==='stats'){showStats()}
   else if(b.dataset.m==='camp'){showCamp()}
   else if(b.dataset.m==='card'){showCardPreview()}
@@ -1699,7 +1738,7 @@ function init(){
   if(!S.seenIntro){S.seenIntro=true;showTut(0)}
   requestAnimationFrame(loop);
 }
-window.__civ={revoltTick,buyGarr,calmProv,unrest,garr,showHosp,buildHosp,quarantine,plagueTick,plgCut,planBattle,pickForm,stanceOf,beats,doAttack0,attackProv0,showMedals,ACH,showPyr,buildPyr,showFaith,chooseGod,doRitual,godMul,faithTick,GODS,showEgypt,attackProv,provCan,provBonus,PROV,showFleet,buyShip,fleetTick,riverPath,showGen,genXp,genLose,genTick,showTechMap,chainTick,chainPick,showChain,CHAINS,sceneURL,showRuler,crown,dynTick,ensureRuler,TRAITS,get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,doEnvoy,doDeal,doPact,doSpy,doAlly,doGift,doTribute,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
+window.__civ={showTrade,buyRoute,tradeTick,tradeIncome,trLv,TR,revoltTick,buyGarr,calmProv,unrest,garr,showHosp,buildHosp,quarantine,plagueTick,plgCut,planBattle,pickForm,stanceOf,beats,doAttack0,attackProv0,showMedals,ACH,showPyr,buildPyr,showFaith,chooseGod,doRitual,godMul,faithTick,GODS,showEgypt,attackProv,provCan,provBonus,PROV,showFleet,buyShip,fleetTick,riverPath,showGen,genXp,genLose,genTick,showTechMap,chainTick,chainPick,showChain,CHAINS,sceneURL,showRuler,crown,dynTick,ensureRuler,TRAITS,get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,doEnvoy,doDeal,doPact,doSpy,doAlly,doGift,doTribute,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
 document.addEventListener('keydown',e=>{
   if(!S||e.ctrlKey||e.metaKey||e.altKey)return;const tg=e.target&&e.target.tagName;if(tg==='INPUT'||tg==='TEXTAREA')return;
   const modalOpen=$('#modal').style.display==='flex';
