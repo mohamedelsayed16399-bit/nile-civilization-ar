@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v17';
+const SAVE='nile-civ-v18';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -590,13 +590,25 @@ function drawStats(){
   const series=[[1,'#7bc96f','السكان'],[2,'#e8c13d','الغذاء'],[3,'#ffffff','الذهب'],[4,'#c06bd1','الثقافة']];
   for(const [i,col] of series){let mx=1;for(const r of st)mx=Math.max(mx,r[i]);g.strokeStyle=col;g.lineWidth=1.6;g.beginPath();st.forEach((r,k)=>{const x=k/(st.length-1)*290+5,y=112-r[i]/mx*100;k?g.lineTo(x,y):g.moveTo(x,y)});g.stroke()}
 }
+function nextHint(){
+  const r=rates(),hs=housing();
+  if(S.pop<=hs&&r.food<0.5)return 'غذاؤك لا يكفي. ابنِ مزرعة أو مصيدة أسماك قرب النهر.';
+  if(S.pop>hs-3)return 'السكن يمتلئ. ابنِ بيتاً قبل أن يتوقف النمو.';
+  if(!S.research&&Object.keys(TECH).some(k=>!hasTech(k)&&TECH[k].need.every(hasTech)))return 'لا يوجد بحث جارٍ. افتح تبويب الأبحاث واختر تقنية.';
+  if(!countB('library')&&hasTech('writing'))return 'ابنِ دار الكتابة لتسريع الأبحاث.';
+  if(!countB('market')&&hasTech('trade'))return 'ابنِ سوقاً للحصول على الذهب.';
+  if(!countB('barracks')&&hasTech('bronze')&&S.day>60)return 'ابنِ ثكنة ودرّب جنوداً قبل الغارات.';
+  const un=['pyramid','sphinx','lighthouse','greatlib','karnak','abusimbel'].find(b=>!countB(b)&&hasAll(BUILD[b].need));
+  if(un)return 'يمكنك الآن بناء '+BUILD[un].n+' ('+costStr(BUILD[un].cost)+').';
+  return 'كل شيء مستقر. وسّع الأراضي ووطّد التجارة مع الجيران.';
+}
 function renderPanel(force){
   for(const b of tabs.children)b.classList.toggle('on',b.dataset.t===tab);
   if(!tab){panel.classList.remove('open');return}
   panel.classList.add('open');
   let h='';
   if(tab==='build'){
-    h='<div class="grid">'+Object.keys(BUILD).map(k=>{const d=BUILD[k],ok=hasAll(d.need);
+    h='<div class="grid"><div class="card" style="flex-basis:100%"><b>💡 نصيحة</b><div class="small">'+nextHint()+'</div></div>'+Object.keys(BUILD).map(k=>{const d=BUILD[k],ok=hasAll(d.need);
       return '<div class="card'+(sel===k?' sel':'')+'" data-b="'+k+'"><b>'+d.i+' '+d.n+'</b><div class="small">'+d.d+'</div><div class="small">'+costStr(d.cost)+'</div>'+(ok?'':'<div class="small">🔒 '+d.need.map(q=>TECH[q].n).join(' + ')+'</div>')+'</div>'}).join('')+'</div><div class="small" style="margin-top:6px">اختر مبنى ثم المس خانة على الخريطة. المس مبنى قائم للتطوير أو الهدم.</div>';
   }else if(tab==='tech'){
     h='<div class="grid">'+Object.keys(TECH).map(k=>{const d=TECH[k],have=hasTech(k),cur=S.research===k,can=d.need.every(hasTech);
