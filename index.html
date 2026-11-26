@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v43';
+const SAVE='nile-civ-v44';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -368,11 +368,23 @@ const ACH=[
  {id:'a9',t:'🌟 النصر الأكبر',d:'ابنِ الأعاجيب الستة بعد سر الخلود',c:()=>!!S.grand},
  {id:'a8',t:'⏳ الخلود',d:'عش 3 سنوات (1080 يوم)',c:()=>S.day>=1080}
 ];
+ACH.push(
+ {id:'n1',t:'🏺 الورع',d:'ابلغ بركة المستوى 3 من إلهك',c:()=>!!S.god&&faithTier()>=3,r:30},
+ {id:'n2',t:'🔺 باني الأهرام',d:'أكمل الهرم الأكبر (12 طبقة)',c:()=>(S.pyr||0)>=12,r:40},
+ {id:'n3',t:'🗺️ سيد مصر',d:'اضمم كل مقاطعات مصر',c:()=>!!S.prov&&Object.keys(PROV).every(k=>S.prov[k]),r:60},
+ {id:'n4',t:'⛵ أمير البحار',d:'امتلك 4 سفن',c:()=>(S.ships||0)>=4,r:20},
+ {id:'n5',t:'🎖️ القائد الأعلى',d:'اوصل بقائدك للمستوى 6',c:()=>!!S.gen&&S.gen.lvl>=6,r:30},
+ {id:'n6',t:'📖 سلالة حاكمة',d:'تعاقب 3 حكام',c:()=>(S.line||[]).length>=3,r:25},
+ {id:'n7',t:'📜 راوي القصص',d:'أنهِ 5 قصص أحداث',c:()=>(S.chainDone||[]).length>=5,r:25},
+ {id:'n8',t:'🎆 صاحب المهرجانات',d:'احضر عيداً في مدينتك',c:()=>S.fest0!==undefined,r:15},
+ {id:'n9',t:'💰 الثري',d:'3000 ذهب',c:()=>S.res.gold>=3000,r:30},
+ {id:'n10',t:'🌍 قوة عظمى',d:'500 نسمة',c:()=>S.pop>=500,r:40}
+);
 function checkQuests(){
   S.q=S.q||{};S.ach=S.ach||{};
   const q=QUESTS.find(x=>!S.q[x.id]);
   if(q&&q.c()){S.q[q.id]=1;for(const k in q.r)S.res[k]+=q.r[k];addLog('أنجزت مهمة: '+q.t);hist('أنجزت: '+q.t);toast('✅ مهمة: '+q.t+' | جائزة '+costStr(q.r));sfx('win')}
-  for(const a of ACH)if(!S.ach[a.id]&&a.c()){S.ach[a.id]=1;toast('🏅 إنجاز: '+a.t);addLog('إنجاز: '+a.t);sfx('win')}
+  for(const a of ACH)if(!S.ach[a.id]&&a.c()){S.ach[a.id]=1;if(a.r)S.res.culture+=a.r;toast('🏅 إنجاز: '+a.t+(a.r?' (+'+a.r+' ثقافة)':''));addLog('إنجاز: '+a.t);sfx('win');S.medalNew=1}
 }
 const WINS=[
  {id:'cul',t:'نصر الثقافة',d:'اجمع 3000 ثقافة',c:()=>S.res.culture>=3000},
@@ -893,6 +905,29 @@ function buildPyr(){const L=S.pyr||0;if(L>=12)return;if(S.res.stone<PYR_COST.sto
  if(S.pyr===4||S.pyr===8)toast('🔺 بركة جديدة من الهرم ('+S.pyr+' طبقات)');
  if(S.pyr===12){S.res.culture+=100;addLog('🔺 اكتمل الهرم الأكبر!');hist('اكتمال الهرم الأكبر');toast('🏆 اكتمل الهرم الأكبر!');sfx('win')}
  renderAll();save();showPyr()}
+
+// ===== Medal gallery (round 44) =====
+const RANKS=[[0,'فلاح'],[3,'كاتب'],[6,'وزير'],[9,'قائد'],[12,'أمير'],[16,'فرعون عظيم'],[20,'إله حي']];
+function rankOf(n){let r=RANKS[0];for(const x of RANKS)if(n>=x[0])r=x;return r}
+function drawMedal(c,x,y,a,got,i){
+ const tier=i%3,cols=[['#e8a860','#8a4a1a'],['#f0f0f8','#7a7a90'],['#ffe27a','#a8761a']][tier];
+ c.save();c.translate(x,y);
+ c.fillStyle=got?['#c0392b','#2a6fb5','#2e9a4a'][i%3]:'#444';c.beginPath();c.moveTo(-14,-52);c.lineTo(-4,-12);c.lineTo(-22,-12);c.closePath();c.fill();c.beginPath();c.moveTo(14,-52);c.lineTo(4,-12);c.lineTo(22,-12);c.closePath();c.fill();
+ const g=c.createRadialGradient(-8,-8,4,0,0,36);if(got){g.addColorStop(0,cols[0]);g.addColorStop(1,cols[1])}else{g.addColorStop(0,'#555');g.addColorStop(1,'#2a2a2a')}
+ c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.arc(2,4,33,0,7);c.fill();
+ c.fillStyle=g;c.beginPath();c.arc(0,0,33,0,7);c.fill();c.strokeStyle=got?'rgba(255,255,255,.7)':'#666';c.lineWidth=2.5;c.stroke();c.beginPath();c.arc(0,0,26,0,7);c.strokeStyle=got?'rgba(80,40,0,.4)':'#3a3a3a';c.lineWidth=1.5;c.stroke();
+ const ic=Array.from(a.t)[0]==='\u200d'?'':(a.t.split(' ')[0]);
+ c.textAlign='center';c.textBaseline='middle';c.font='26px sans-serif';c.globalAlpha=got?1:.35;c.fillText(got?ic:'🔒',0,2);c.globalAlpha=1;
+ if(got){c.fillStyle='rgba(255,255,255,.35)';c.beginPath();c.ellipse(-10,-14,10,5,-.6,0,7);c.fill()}
+ c.restore()}
+function showMedals(){S.ach=S.ach||{};S.medalNew=0;
+ const n=ACH.filter(a=>S.ach[a.id]).length,rk=rankOf(n),nx=RANKS.find(x=>x[0]>n);
+ const cols=4,cw=160,rh=140,rows=Math.ceil(ACH.length/cols);
+ showModal('<h2>🏅 قاعة الأوسمة ('+n+'/'+ACH.length+')</h2><div style="background:linear-gradient(90deg,#6a3a8a,#c0392b);border-radius:10px;padding:8px;margin-bottom:8px"><b style="font-size:17px">🎖️ رتبتك: '+rk[1]+'</b><div class="small">'+(nx?'الرتبة التالية «'+nx[1]+'» عند '+nx[0]+' أوسمة':'أعلى رتبة!')+'</div></div><div style="max-height:38vh;overflow:auto;border-radius:10px;background:#1b1410"><canvas id="mdc" width="'+cols*cw+'" height="'+rows*rh+'" style="width:100%;display:block"></canvas></div><div id="mdi" class="small" style="margin:8px 0;min-height:38px">اضغط على وسام لرؤية شرطه.</div><button onclick="closeModal()">إغلاق</button>');
+ const cv=$('#mdc'),c=cv.getContext('2d');
+ ACH.forEach((a,i)=>{const col=i%cols,row=(i/cols)|0,x=col*cw+cw/2,y=row*rh+66;drawMedal(c,x,y,a,!!S.ach[a.id],i);
+  c.textAlign='center';c.textBaseline='middle';c.font='bold 13px sans-serif';c.fillStyle=S.ach[a.id]?'#fff':'#888';c.fillText(a.t.split(' ').slice(1).join(' ').slice(0,16),x,row*rh+122)});
+ cv.onclick=e=>{const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*(cv.width/r.width),y=(e.clientY-r.top)*(cv.height/r.height);const col=Math.floor(x/cw),row=Math.floor(y/rh),i=row*cols+col;const a=ACH[i];if(a&&col<cols)$('#mdi').innerHTML='<b>'+a.t+'</b> · '+a.d+(S.ach[a.id]?' ✅':' 🔒')+(a.r?' · جائزة +'+a.r+' ثقافة':'')}}
 let _tref=null;
 function adj2(t,types){const i=S.tiles.indexOf(t);const x=i%W,y=(i/W)|0;return adj(x,y,types)}
 function tick(){
@@ -1252,7 +1287,8 @@ panel.addEventListener('click',e=>{
   else if(b.dataset.m==='fontp'){setFont(1)}
   else if(b.dataset.m==='fontm'){setFont(-1)}
   else if(b.dataset.m==='cname'){const v=prompt('اسم مدينتك (حتى 14 حرفاً):',S.cityName||'');if(v!==null){S.cityName=v.trim().slice(0,14);save();renderTop();toast('🏛️ '+(S.cityName||'بلا اسم'))}}
-  else if(b.dataset.m==='ach'){S.ach=S.ach||{};const done=ACH.filter(a=>S.ach[a.id]).length;showModal('<h2>🏆 الإنجازات ('+done+'/'+ACH.length+')</h2><div style="text-align:right">'+ACH.map(a=>'<div style="padding:5px 0;border-bottom:1px solid #5a4630;opacity:'+(S.ach[a.id]?1:.5)+'"><b>'+(S.ach[a.id]?'✅ ':'🔒 ')+a.t+'</b><div class="small">'+a.d+'</div></div>').join('')+'</div><button onclick="closeModal()">إغلاق</button>')}
+  else if(b.dataset.m==='ach'){showMedals();return}
+  else if(b.dataset.m==='ach_old'){S.ach=S.ach||{};const done=ACH.filter(a=>S.ach[a.id]).length;showModal('<h2>🏆 الإنجازات ('+done+'/'+ACH.length+')</h2><div style="text-align:right">'+ACH.map(a=>'<div style="padding:5px 0;border-bottom:1px solid #5a4630;opacity:'+(S.ach[a.id]?1:.5)+'"><b>'+(S.ach[a.id]?'✅ ':'🔒 ')+a.t+'</b><div class="small">'+a.d+'</div></div>').join('')+'</div><button onclick="closeModal()">إغلاق</button>')}
   else if(b.dataset.m==='tree'){const dep={};const dp=k=>dep[k]!==undefined?dep[k]:(dep[k]=TECH[k].need.length?1+Math.max(...TECH[k].need.map(dp)):0);Object.keys(TECH).forEach(dp);const mx=Math.max(...Object.values(dep));let h2='<h2>🌳 شجرة التقنيات</h2><div style="text-align:right;max-height:60vh;overflow:auto">';for(let l=0;l<=mx;l++){const ks=Object.keys(TECH).filter(k=>dep[k]===l);if(!ks.length)continue;h2+='<div class="small" style="margin-top:6px"><b>المستوى '+(l+1)+'</b></div>'+ks.map(k=>{const st=hasTech(k)?'✅':S.research===k?'⏳':TECH[k].need.every(hasTech)?'🔬':'🔒';return '<div style="padding:3px 0;border-bottom:1px solid #4a3822">'+st+' <b>'+TECH[k].n+'</b> <span class="small">('+TECH[k].c+')'+(TECH[k].need.length?' ← '+TECH[k].need.map(q=>TECH[q].n).join(' + '):'')+'</span></div>'}).join('')}h2+='</div><button onclick="closeModal()">إغلاق</button>';showModal(h2)}
   else if(b.dataset.m==='ruler'){showRuler()}
   else if(b.dataset.m==='tmap'){showTechMap()}
@@ -1578,7 +1614,7 @@ function init(){
   if(!S.seenIntro){S.seenIntro=true;showTut(0)}
   requestAnimationFrame(loop);
 }
-window.__civ={showPyr,buildPyr,showFaith,chooseGod,doRitual,godMul,faithTick,GODS,showEgypt,attackProv,provCan,provBonus,PROV,showFleet,buyShip,fleetTick,riverPath,showGen,genXp,genLose,genTick,showTechMap,chainTick,chainPick,showChain,CHAINS,sceneURL,showRuler,crown,dynTick,ensureRuler,TRAITS,get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,doEnvoy,doDeal,doPact,doSpy,doAlly,doGift,doTribute,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
+window.__civ={showMedals,ACH,showPyr,buildPyr,showFaith,chooseGod,doRitual,godMul,faithTick,GODS,showEgypt,attackProv,provCan,provBonus,PROV,showFleet,buyShip,fleetTick,riverPath,showGen,genXp,genLose,genTick,showTechMap,chainTick,chainPick,showChain,CHAINS,sceneURL,showRuler,crown,dynTick,ensureRuler,TRAITS,get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,doEnvoy,doDeal,doPact,doSpy,doAlly,doGift,doTribute,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
 document.addEventListener('keydown',e=>{
   if(!S||e.ctrlKey||e.metaKey||e.altKey)return;const tg=e.target&&e.target.tagName;if(tg==='INPUT'||tg==='TEXTAREA')return;
   const modalOpen=$('#modal').style.display==='flex';
