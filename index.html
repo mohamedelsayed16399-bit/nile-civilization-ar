@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v57';
+const SAVE='nile-civ-v58';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -1029,7 +1029,7 @@ function trCost(k){return Math.floor(TR[k].cost*(trLv(k)+1)*(trLv(k)?1.3:1))}
 function trUnlocked(k){return S.pop>=({kush:15,canaan:20,crete:30,punt:40,babylon:60})[k]}
 function buyRoute(k){if(!trUnlocked(k)){toast('🔒 تحتاج سكاناً أكثر');return}const L=trLv(k);if(L>=3){toast('الطريق في أعلى مستوى');return}const c=trCost(k);if(S.res.gold<c){toast('⚠️ الذهب لا يكفي');return}
  S.res.gold-=c;S.trade[k]=L+1;S.res.culture+=L?3:10;sfx('build');addLog('🐪 '+(L?'ترقية':'فتح')+' طريق التجارة إلى '+TR[k].n);if(!L)hist('طريق تجارة إلى '+TR[k].n);renderAll();save();showTrade(k)}
-function tradeIncome(){let g=0,f=0;for(const k in TR){g+=trRate(k);f+=trFood(k)}return {g,f}}
+function tradeIncome(){let g=0,f=0;for(const k in TR){g+=trRate(k);f+=trFood(k)}g=Math.min(g,3+S.pop*.07);f=Math.min(f,1+S.pop*.02);return {g,f}}
 function tradeTick(){S.trade=S.trade||{};const inc=tradeIncome();S.res.gold+=inc.g;S.res.food+=inc.f;
  for(const k in TR){if(trLv(k)&&!(S.cvAt&&S.day<S.cvAt)&&Math.random()<TR[k].risk*.012*(1-Math.min(.6,defense()/4000))){S.cvAt=S.day+10;const loss=Math.floor(trRate(k)*8);S.res.gold=Math.max(0,S.res.gold-loss);addLog('🏴‍☠️ لصوص هاجموا قافلة '+TR[k].n+' (-'+loss+' ذهب)');toast('🏴‍☠️ هجوم على قافلة '+TR[k].n);sfx('bad');break}}}
 let _trSel=null,_trRaf=0;
@@ -1192,10 +1192,10 @@ function mkTick(){mkInit();const M=S.mk,sn=seasonIdx();
   let p=M.p[k];p+=(tgt-p)*.12+(Math.random()-.5)*2*g.v*p;p=Math.max(g.b*.35,Math.min(g.b*3,p));M.p[k]=p;
   if(S.day%2===0){M.h[k].push(p);if(M.h[k].length>40)M.h[k].shift()}}}
 function invTotal(){return Object.keys(MKG).reduce((a,k)=>a+S.inv[k],0)}
-function mkBuy(k,q){mkInit();q=q||5;const p=Math.round(S.mk.p[k]),space=mkCap()-invTotal(),n=Math.min(q,space);if(n<=0){toast('⚠️ المخزن ممتلئ');return}if(S.res.gold<p*n){toast('⚠️ الذهب لا يكفي');return}
- const old=S.inv[k]*S.inv.cost[k];S.res.gold-=p*n;S.inv[k]+=n;S.inv.cost[k]=(old+p*n)/S.inv[k];sfx('build');renderAll();showMarket()}
+function mkBuy(k,q){mkInit();q=q||5;const p=Math.round(S.mk.p[k]*1.04),space=mkCap()-invTotal(),n=Math.min(q,space);if(n<=0){toast('⚠️ المخزن ممتلئ');return}if(S.res.gold<p*n){toast('⚠️ الذهب لا يكفي');return}
+ const old=S.inv[k]*S.inv.cost[k];S.res.gold-=p*n;S.inv[k]+=n;S.inv.cost[k]=(old+p*n)/S.inv[k];S.mk.p[k]*=1+.02*n/5;sfx('build');renderAll();showMarket()}
 function mkSell(k,q){mkInit();q=q||5;const n=Math.min(q,S.inv[k]);if(n<=0){toast('لا تملك '+MKG[k].n);return}const p=Math.round(S.mk.p[k]*.94);
- const prof=Math.round((p-S.inv.cost[k])*n);S.res.gold+=p*n;S.inv[k]-=n;if(!S.inv[k])S.inv.cost[k]=0;S.mkProfit+=prof;if(prof>0)S.res.culture+=Math.floor(prof/40);sfx(prof>=0?'win':'bad');
+ const prof=Math.round((p-S.inv.cost[k])*n);S.res.gold+=p*n;S.inv[k]-=n;S.mk.p[k]=Math.max(MKG[k].b*.35,S.mk.p[k]*(1-.02*n/5));if(!S.inv[k])S.inv.cost[k]=0;S.mkProfit+=prof;if(prof>0)S.res.culture+=Math.floor(prof/40);sfx(prof>=0?'win':'bad');
  if(prof>=100)addLog('💰 ربحت '+prof+' ذهب من تجارة '+MKG[k].n);if(S.mkProfit>=1000&&!S.flags.mkTycoon){S.flags.mkTycoon=1;hist('أصبح تاجراً كبيراً');toast('🏆 تاجر كبير! أرباحك 1000')}renderAll();showMarket()}
 function mkChart(){let o='<svg viewBox="0 0 300 120" width="100%" style="border-radius:10px;background:#1b1410">';
  for(const k in MKG){const h=S.mk.h[k],g=MKG[k],lo=g.b*.3,hi=g.b*3;const pts=h.map((v,i)=>(8+i*(284/39))+','+(112-(Math.log(v/lo)/Math.log(hi/lo))*100)).join(' ');o+='<polyline points="'+pts+'" fill="none" stroke="'+g.col+'" stroke-width="2"/>'}
@@ -1232,7 +1232,7 @@ function exPick(i){if(!EX||EX.done)return;const e=EXS[EX.seq[EX.st]],o=e.o[i][1]
  EX.st++;if(EX.st>=4||EX.mor<=0)exFinish();else exShow()}
 function exAbort(){if(!EX)return;exFinish(true)}
 function exFinish(ab){if(!EX)return;EX.done=true;const d=EXD[EX.k],f=Math.max(.2,(EX.mor/100)*.5+(EX.men/12)*.5)*(ab?.3:1);
- const gold=Math.floor(d.gold*f+EX.loot*2),stone=Math.floor(d.stone*f+EX.loot*.3),cul=Math.floor(d.cul*f);
+ const gold=Math.floor((d.gold*f+EX.loot*2)*.7),stone=Math.floor(d.stone*f+EX.loot*.3),cul=Math.floor(d.cul*f);
  S.res.gold+=gold;S.res.stone+=stone;S.res.culture+=cul;S.exAt=S.day+30;S.exN=(S.exN||0)+1;S.exBest=Math.max(S.exBest||0,gold);
  const lost=12-EX.men;if(lost>0&&S.pop>8)S.pop=Math.max(3,S.pop-Math.floor(lost/3));
  addLog('🐪 بعثة '+d.n+': +'+gold+' ذهب +'+stone+' حجر'+(lost?' وفقدت '+lost+' رجل':''));if(EX.k==='punt'&&!ab)hist('بعثة ناجحة إلى بونت');
