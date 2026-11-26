@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v10';
+const SAVE='nile-civ-v11';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -122,6 +122,11 @@ const EVENTS=[
  {id:'quarrybonus',t:'عرق حجر جديد',m:'اكتشف العمال عرقاً غنياً. +60 حجر.',f:s=>{s.res.stone+=60}},
  {id:'bumper',t:'موسم وفير',m:'محصول استثنائي! +80 غذاء.',f:s=>{s.res.food+=80}},
  {id:'fire',t:'حريق',m:'حريق في الأحياء الفقيرة. -15 خشب وفقدت 4% من السكان.',f:s=>{s.res.wood=Math.max(0,s.res.wood-15);s.pop=Math.max(5,Math.floor(s.pop*.96))}},
+ {id:'caravan',t:'قافلة تجار',m:'قافلة غريبة باعت لك بضاعة رخيصة. +40 ذهب +20 خشب.',f:s=>{s.res.gold+=40;s.res.wood+=20}},
+ {id:'ratsgrain',t:'فئران في المخازن',m:'أفسدت الفئران جزءاً من الحبوب. -25 غذاء.',f:s=>{s.res.food=Math.max(0,s.res.food-25)}},
+ {id:'oracle',t:'نبوءة الكهنة',m:'تنبأ الكهنة بمستقبل مجيد. +20 ثقافة +20 علوم.',f:s=>{s.res.culture+=20;s.res.science+=20}},
+ {id:'bridgecrew',t:'عمال متطوعون',m:'تطوع الأهالي لنقل الحجارة. +40 حجر +20 خشب.',f:s=>{s.res.stone+=40;s.res.wood+=20}},
+ {id:'heatwave',t:'موجة حر',m:'حرّ شديد أرهق الناس. -20 غذاء و-2 سكان.',f:s=>{s.res.food=Math.max(0,s.res.food-20);s.pop=Math.max(5,s.pop-2)}},
  {id:'scribe',t:'كاتب عبقري',m:'كاتب موهوب يسرّع بحثك. +30 علوم.',f:s=>{s.res.science+=30}}
 ];
 const NEIGH_DEF=[
@@ -703,6 +708,11 @@ function draw(time){
   if(selTile){const [sx,sy]=selTile;ctx.strokeStyle='#ffd36b';ctx.lineWidth=3;ctx.strokeRect(sx*T+1,sy*T+1,T-2,T-2)}
   if(sel&&hover){const [hx,hy]=hover;if(inb(hx,hy)){const ok=!whyNot(sel,hx,hy);ctx.fillStyle=ok?'rgba(80,255,80,.35)':'rgba(255,60,60,.35)';ctx.fillRect(hx*T,hy*T,T,T)}}
   ctx.restore();
+  // weather (screen space)
+  {const sn2=seasonIdx();
+   if(sn2===0&&(Math.floor(S.day/9)%3===1)){ctx.strokeStyle='rgba(190,215,255,.45)';ctx.lineWidth=1.2;ctx.beginPath();for(let i=0;i<70;i++){const rx=((i*97+time*.35)%(VW+60))-30,ry=((i*53+time*.9)%(VH+40))-20;ctx.moveTo(rx,ry);ctx.lineTo(rx-4,ry+12)}ctx.stroke();ctx.fillStyle='rgba(60,80,120,.12)';ctx.fillRect(0,0,VW,VH)}
+   else if(sn2===2){ctx.fillStyle='rgba(255,225,140,.55)';for(let i=0;i<26;i++){const rx=((i*131+time*.02*(1+i%3))%(VW+20))-10,ry=(i*71+Math.sin(time/900+i)*14)%VH;ctx.fillRect(rx,ry,2,2)}}
+   else if(sn2===1&&(Math.floor(S.day/11)%4===2)){ctx.fillStyle='rgba(235,235,235,.10)';ctx.fillRect(0,0,VW,VH)}}
   // night overlay by season day cycle
   const dn=((S.day+(time/1000*S.speed||0))%16)/16;const dark=Math.max(0,Math.sin(dn*Math.PI*2)*-.18);
   if(dark>0){ctx.fillStyle='rgba(10,10,50,'+dark+')';ctx.fillRect(0,0,VW,VH);
