@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v28';
+const SAVE='nile-civ-v29';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -231,7 +231,7 @@ function drawRing(c,time){let wn=0,x0=99,y0=99,x1=-1,y1=-1;for(let y=0;y<H;y++)f
 function drawPalm(c,x,y,t,k){const sw=Math.sin(t/700+k)*2;c.strokeStyle='#6b4a22';c.lineWidth=2.5;c.beginPath();c.moveTo(x,y);c.quadraticCurveTo(x+1+sw*.4,y-9,x+sw,y-17);c.stroke();c.strokeStyle='#2f8f3a';c.lineWidth=2;for(let a=-2;a<=2;a++){c.beginPath();c.moveTo(x+sw,y-17);c.quadraticCurveTo(x+sw+a*6,y-22+Math.abs(a)*2,x+sw+a*9,y-14+Math.abs(a)*3+sw*.3);c.stroke()}c.fillStyle='#a8742a';c.beginPath();c.arc(x+sw-1,y-16,1.5,0,7);c.fill()}
 function drawReeds(c,x,y,t,k){c.strokeStyle='#4f7a2a';c.lineWidth=1.6;for(let i=0;i<5;i++){const bx=x+i*3-6,sw=Math.sin(t/500+k+i)*1.5;c.beginPath();c.moveTo(bx,y);c.quadraticCurveTo(bx+sw*.5,y-7,bx+sw,y-13-(i%3)*2);c.stroke();if(i%2===0){c.fillStyle='#7a5530';c.fillRect(bx+sw-1,y-16-(i%3)*2,2,4)}}}
 let DIFF=1;
-function newGame(seed,diff){
+function newGame(seed,diff){setTimeout(()=>{if(S&&S.day<5&&S.coach===undefined)S.coach=0},0);
   if(diff!==undefined)DIFF=diff;
   seed=seed||((Math.random()*1e9)|0);
   const tiles=genMap(seed);
@@ -807,6 +807,31 @@ const TUT=[
  ['🎯 المهام','تابع المهمة الخضراء في الشريط العلوي. كل مهمة تعطيك جائزة. حظاً موفقاً أيها الفرعون!']
 ];
 function showTut(i){if(i>=TUT.length){closeModal();return}showModal('<h2>'+TUT[i][0]+'</h2><p>'+TUT[i][1]+'</p><div class="small">'+(i+1)+'/'+TUT.length+'</div><button onclick="showTut('+(i+1)+')">'+(i+1<TUT.length?'التالي':'ابدأ اللعب')+'</button><button onclick="closeModal()">تخطي</button>')}
+
+// ---------- guided coach ----------
+const COACH=[
+ {t:'اضغط تبويب «بناء» في الأسفل',sel:()=>'#tabs [data-t=build]',ok:()=>tab==='build'},
+ {t:'اختر «مزرعة» من القائمة',sel:()=>'[data-b=farm]',ok:()=>sel==='farm'||countB('farm')>(S.coachBase||0)},
+ {t:'المس خانة خضراء بجانب النهر لتبني المزرعة',sel:()=>null,ok:()=>countB('farm')>(S.coachBase||0),base:()=>countB('farm')},
+ {t:'ممتاز! الآن اختر «بيت» وابنِه لزيادة السكان',sel:()=>'[data-b=house]',ok:()=>countB('house')>(S.coachBase||0),base:()=>countB('house')},
+ {t:'افتح تبويب «أبحاث» وابدأ أول تقنية',sel:()=>'#tabs [data-t=tech]',ok:()=>tab==='tech'}
+];
+let coachHi=null,coachBn=null,coachLast=-2;
+function coachTick(){
+  if(!S||S.coach===undefined||S.coach<0)return;
+  if(S.coach>=COACH.length){S.coach=-1;if(coachBn)coachBn.remove();if(coachHi)coachHi.remove();coachBn=coachHi=null;toast('🎓 انتهى الدليل. حظاً موفقاً أيها الفرعون!');return}
+  if($('#modal').style.display==='flex'){if(coachBn)coachBn.style.display='none';if(coachHi)coachHi.style.display='none';return}
+  const st=COACH[S.coach];
+  if(S.coachBase===undefined&&st.base)S.coachBase=st.base();
+  if(st.ok()){S.coach++;S.coachBase=undefined;coachLast=-2;sfx&&sfx('event');return}
+  if(!coachBn){coachBn=document.createElement('div');coachBn.id='coachBn';coachBn.style.cssText='position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 140px);z-index:40;background:#2a1d10ee;color:#fff3d0;border:2px solid #c9a24b;border-radius:12px;padding:8px 12px;font-size:14px;text-align:center;pointer-events:none;box-shadow:0 4px 14px #0008';document.body.appendChild(coachBn);
+    coachHi=document.createElement('div');coachHi.style.cssText='position:fixed;z-index:41;border:3px solid #ffd36b;border-radius:10px;pointer-events:none;box-shadow:0 0 14px #ffd36b';document.body.appendChild(coachHi);
+    const sk=document.createElement('button');sk.textContent='تخطي';sk.style.cssText='pointer-events:auto;margin-top:4px;background:#c9a24b;border:0;border-radius:8px;padding:2px 10px;font-family:inherit';sk.onclick=()=>{S.coach=-1;coachBn.remove();coachHi.remove();coachBn=coachHi=null};coachBn.appendChild(document.createElement('div'));coachBn.sk=sk;coachBn.appendChild(sk)}
+  coachBn.style.display='block';coachBn.firstChild.textContent='🎓 الخطوة '+(S.coach+1)+'/'+COACH.length+': '+st.t;
+  const q=st.sel();const el=q?document.querySelector(q):null;
+  if(el){const r=el.getBoundingClientRect();coachHi.style.display='block';coachHi.style.left=(r.left-3)+'px';coachHi.style.top=(r.top-3)+'px';coachHi.style.width=(r.width+6)+'px';coachHi.style.height=(r.height+6)+'px';coachHi.style.opacity=.55+.45*Math.sin(performance.now()/220)}else coachHi.style.display='none';
+}
+setInterval(()=>{try{coachTick()}catch(e){}},250);
 function showHelp(){showModal('<h2>🏺 حضارة النيل</h2><p>ابدأ بقرية صغيرة على ضفة النيل وابنِ حضارة عظيمة.</p><p>🌾 <b>الغذاء:</b> المزارع تنتج أكثر في موسم الحصاد وأقل وقت الفيضان. خزّن واحذر المجاعة.<br>🏠 <b>السكان:</b> يحتاجون بيوتاً. كل بيت يسكّن 6.<br>🔬 <b>الأبحاث:</b> تفتح مباني ووحدات وعصوراً جديدة.<br>⚔️ <b>الجيش:</b> الجيران يغيرون عليك. ابنِ ثكنة وأسواراً.<br>🐫 <b>التجارة:</b> قوافل تجلب ذهباً وتحسّن العلاقات.<br>🔺 <b>الهدف:</b> ابنِ الهرم الأكبر وأخضع جيرانك.</p><p class="small">اسحب الخريطة بإصبعك، وقرّب بإصبعين أو بعجلة الماوس.</p><button onclick="closeModal()">فهمت</button>')}
 $('#spd').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.speed=+b.dataset.s;for(const x of $('#spd').children)x.classList.toggle('on',x===b)});
 // ---------- map view ----------
