@@ -37,11 +37,11 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 </style>
 </head>
 <body>
-<canvas id="cv"></canvas>
+<canvas id="cv" role="img" aria-label="خريطة حضارة النيل"></canvas>
 <div id="top"></div>
-<div id="spd"><button data-s="0">⏸</button><button data-s="1" class="on">▶</button><button data-s="3">⏩</button><button data-s="8">⏭</button></div>
-<div id="info"></div><canvas id="mm" width="88" height="88" style="position:fixed;left:6px;bottom:calc(var(--bh,80px) + 8px);z-index:4;border:2px solid #c9a24b;border-radius:6px;opacity:.9"></canvas>
-<div id="toast"></div><div id="sv" style="position:fixed;left:50%;transform:translateX(-50%);top:2px;z-index:8;font-size:10px;opacity:0;transition:opacity .4s;background:#000a;padding:1px 8px;border-radius:8px">💾 حُفظ تلقائياً</div>
+<div id="spd" role="group" aria-label="سرعة اللعبة"><button data-s="0" aria-label="إيقاف مؤقت">⏸</button><button data-s="1" class="on" aria-label="سرعة عادية">▶</button><button data-s="3" aria-label="سرعة مضاعفة">⏩</button><button data-s="8" aria-label="أقصى سرعة">⏭</button></div>
+<div id="info"></div><canvas id="mm" role="img" aria-label="خريطة مصغرة، اضغط للانتقال" width="88" height="88" style="position:fixed;left:6px;bottom:calc(var(--bh,80px) + 8px);z-index:4;border:2px solid #c9a24b;border-radius:6px;opacity:.9"></canvas>
+<div id="toast" role="status" aria-live="polite"></div><div id="sv" style="position:fixed;left:50%;transform:translateX(-50%);top:2px;z-index:8;font-size:10px;opacity:0;transition:opacity .4s;background:#000a;padding:1px 8px;border-radius:8px">💾 حُفظ تلقائياً</div>
 <div id="bar"><div id="tabs"></div><div id="panel"></div></div>
 <div id="modal"><div class="box" id="mbox"></div></div>
 <script>
@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v15';
+const SAVE='nile-civ-v16';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -417,6 +417,10 @@ function raid(){
 }
 
 const DECISIONS=[
+ {t:'حاكم محلي يطلب العون',m:'حاكم إقليمي يطلب قمحاً لشعبه الجائع ويعد بالولاء.',a:['أعطه 50 غذاء (+30 ثقافة +20 ذهب)',s=>{if(s.res.food<50)return false;s.res.food-=50;s.res.culture+=30;s.res.gold+=20;return true}],b:['ارفض',s=>true]},
+ {t:'اكتشاف أثري',m:'عمال وجدوا مقبرة قديمة. هل تحفر بحثاً عن كنوز؟',a:['احفر (+70 ذهب، -5 غذاء)',s=>{if(s.res.food<5)return false;s.res.food-=5;s.res.gold+=70;return true}],b:['احترم المقبرة (+25 ثقافة)',s=>{s.res.culture+=25;return true}]},
+ {t:'معلم زائر',m:'عالم من بلاد بعيدة يعرض تعليم كتبتك مقابل أجر.',a:['ادفع 40 ذهب (+60 علوم)',s=>{if(s.res.gold<40)return false;s.res.gold-=40;s.res.science+=60;return true}],b:['اعتذر',s=>true]},
+ {t:'نزاع على الأرض',m:'فلاحان يتنازعان على حقل قرب النهر.',a:['احكم بالعدل (+15 ثقافة)',s=>{s.res.culture+=15;return true}],b:['خذ رشوة (+30 ذهب، -10 ثقافة)',s=>{s.res.gold+=30;s.res.culture=Math.max(0,s.res.culture-10);return true}]},
  {t:'طلب الكهنة',m:'كهنة آمون يطلبون ذهباً لتجديد المعبد الكبير.',a:['ادفع 40 ذهب (+40 ثقافة)',s=>{if(s.res.gold<40)return false;s.res.gold-=40;s.res.culture+=40;return true}],b:['ارفض (-10 ثقافة)',s=>{s.res.culture=Math.max(0,s.res.culture-10);return true}]},
  {t:'قافلة غريبة',m:'تجار من الشرق يعرضون بيع أحجار نادرة.',a:['اشترِ بـ 50 ذهب (+120 حجر)',s=>{if(s.res.gold<50)return false;s.res.gold-=50;s.res.stone+=120;return true}],b:['اطردهم',s=>true]},
  {t:'لاجئون',m:'مجموعة جائعة تطلب اللجوء.',a:['استقبلهم (-30 غذاء، +10 سكان)',s=>{if(s.res.food<30)return false;s.res.food-=30;s.pop+=10;return true}],b:['ارفض',s=>true]},
