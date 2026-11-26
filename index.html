@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v19';
+const SAVE='nile-civ-v20';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -134,10 +134,11 @@ const EVENTS=[
  {id:'heatwave',t:'موجة حر',m:'حرّ شديد أرهق الناس. -20 غذاء و-2 سكان.',f:s=>{s.res.food=Math.max(0,s.res.food-20);s.pop=Math.max(5,s.pop-2)}},
  {id:'scribe',t:'كاتب عبقري',m:'كاتب موهوب يسرّع بحثك. +30 علوم.',f:s=>{s.res.science+=30}}
 ];
+const PERS={trader:{n:'تجار',d:'يحبون التجارة: الاتفاقيات تربح أكثر'},warlike:{n:'محاربون',d:'يغيرون كثيراً لكنهم يحترمون القوة'},proud:{n:'فخورون',d:'لا تؤثر فيهم الهدايا كثيراً'}};
 const NEIGH_DEF=[
- {id:'nubia',n:'بلاد النوبة',i:'🏹',dir:'جنوب',x:22,y:41,base:14,grow:.07},
- {id:'hyksos',n:'الهكسوس',i:'🐎',dir:'شرق',x:41,y:20,base:20,grow:.09},
- {id:'libya',n:'قبائل ليبيا',i:'🛡️',dir:'غرب',x:2,y:22,base:12,grow:.06}
+ {id:'nubia',p:'trader',n:'بلاد النوبة',i:'🏹',dir:'جنوب',x:22,y:41,base:14,grow:.07},
+ {id:'hyksos',p:'warlike',n:'الهكسوس',i:'🐎',dir:'شرق',x:41,y:20,base:20,grow:.09},
+ {id:'libya',p:'proud',n:'قبائل ليبيا',i:'🛡️',dir:'غرب',x:2,y:22,base:12,grow:.06}
 ];
 // ---------- state ----------
 let S=null;
@@ -147,21 +148,39 @@ function genMap(seed){
   rnd=mulberry(seed);
   const n=[];
   const ph=[rnd()*6,rnd()*6,rnd()*6];
+  const amp=2.5+rnd()*4.5,fq=.12+rnd()*.12,band=4.6+rnd()*2.2,hillT=.02+rnd()*.28,dune=rnd(),wide=1.5+rnd()*.7;
+  S0style={amp,fq,band,hillT,dune,wide};
   function noise(x,y){return (Math.sin(x*.21+ph[0])+Math.sin(y*.27+ph[1])+Math.sin((x+y)*.13+ph[2]))/3}
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    const cx=W/2+Math.sin(y*.19+ph[0])*5+Math.sin(y*.07)*3;
+    const cx=W/2+Math.sin(y*fq+ph[0])*amp+Math.sin(y*.07+ph[1])*3;
     const d=Math.abs(x-cx);
     let t;
     if(y<3) t=TILE.WATER;
-    else if(d<1.7) t=TILE.RIVER;
-    else if(d<5.5) t=noise(x,y)>-.7?TILE.FERTILE:TILE.GRASS;
-    else if(d<9) t=noise(x,y)>.15?TILE.HILL:(rnd()<.3?TILE.GRASS:TILE.DESERT);
-    else t=noise(x,y)>.2?TILE.HILL:TILE.DESERT;
+    else if(d<wide) t=TILE.RIVER;
+    else if(d<band) t=noise(x,y)>-.7?TILE.FERTILE:TILE.GRASS;
+    else if(d<band+3.5) t=noise(x,y)>hillT?TILE.HILL:(rnd()<.3?TILE.GRASS:TILE.DESERT);
+    else t=noise(x,y)>hillT+.05?TILE.HILL:TILE.DESERT;
     if(y<7&&d<9&&t!==TILE.RIVER&&t!==TILE.WATER) t=rnd()<.7?TILE.FERTILE:TILE.GRASS;
     n.push({t,b:null,lvl:0});
   }
   return n;
 }
+let S0style=null;
+function startNew(diff){const el=document.getElementById('seedIn');const sd=seedFrom(el?el.value:'');closeModal();newGame(sd,diff);save();renderAll();toast('🌍 بدأت حضارة جديدة (بذرة '+S.seed+')')}
+function seedFrom(txt){txt=String(txt||'').trim();if(!txt)return 0;if(/^\d+$/.test(txt))return (+txt%1000000000)||1;let h=2166136261;for(const ch of txt){h^=ch.codePointAt(0);h=Math.imul(h,16777619)}return (h>>>0)%1000000000||1}
+function hv(x,y){return ((x*73856093)^(y*19349663)^((S.seed||1)*83492791))>>>0}
+function drawSoldier(c,u,x,y,t,k){
+  const b=Math.abs(Math.sin(t/260+k))*1.5;c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(x,y+1,5,2,0,0,7);c.fill();
+  if(u==='chariot'){c.fillStyle='#7a4a22';c.fillRect(x-8,y-6-b,12,5);c.fillStyle='#3a2410';c.beginPath();c.arc(x-4,y-1,3,0,7);c.fill();c.fillStyle='#8b5a2b';c.beginPath();c.ellipse(x+8,y-6-b,5,3.5,0,0,7);c.fill();c.fillRect(x+10,y-11-b,2.5,4);c.fillStyle='#d8b377';c.fillRect(x-4,y-12-b,3,5);return}
+  const col={spear:'#2f6fa5',archer:'#3b8a3b',guard:'#d4a017'}[u]||'#888';
+  c.fillStyle='#f3d9a4';c.beginPath();c.arc(x,y-11-b,2.6,0,7);c.fill();
+  c.fillStyle=col;c.fillRect(x-3,y-8-b,6,7);c.fillStyle='#4a3018';c.fillRect(x-3,y-1-b,2,3);c.fillRect(x+1,y-1-b,2,3);
+  if(u==='spear'){c.strokeStyle='#8a6a3a';c.lineWidth=1.3;c.beginPath();c.moveTo(x+5,y+1);c.lineTo(x+5,y-16-b);c.stroke();c.fillStyle='#ccc';c.beginPath();c.moveTo(x+5,y-19-b);c.lineTo(x+3.5,y-15-b);c.lineTo(x+6.5,y-15-b);c.fill();c.fillStyle='#c0392b';c.fillRect(x-6,y-8-b,3,5)}
+  else if(u==='archer'){c.strokeStyle='#6b4a22';c.lineWidth=1.3;c.beginPath();c.arc(x+5,y-6-b,5,-1.2,1.2);c.stroke();c.strokeStyle='#ddd';c.lineWidth=.6;c.beginPath();c.moveTo(x+5+5*Math.cos(-1.2),y-6-b+5*Math.sin(-1.2));c.lineTo(x+5+5*Math.cos(1.2),y-6-b+5*Math.sin(1.2));c.stroke()}
+  else if(u==='guard'){c.fillStyle='#ffd36b';c.fillRect(x-3.5,y-14-b,7,3);c.fillStyle='#1d3f8a';c.fillRect(x-3,y-5-b,6,2);c.strokeStyle='#d4a017';c.lineWidth=1.3;c.beginPath();c.moveTo(x+5,y+1);c.lineTo(x+5,y-15-b);c.stroke();c.fillStyle='#fff';c.fillRect(x-7,y-9-b,3,6)}
+}
+function drawPalm(c,x,y,t,k){const sw=Math.sin(t/700+k)*2;c.strokeStyle='#6b4a22';c.lineWidth=2.5;c.beginPath();c.moveTo(x,y);c.quadraticCurveTo(x+1+sw*.4,y-9,x+sw,y-17);c.stroke();c.strokeStyle='#2f8f3a';c.lineWidth=2;for(let a=-2;a<=2;a++){c.beginPath();c.moveTo(x+sw,y-17);c.quadraticCurveTo(x+sw+a*6,y-22+Math.abs(a)*2,x+sw+a*9,y-14+Math.abs(a)*3+sw*.3);c.stroke()}c.fillStyle='#a8742a';c.beginPath();c.arc(x+sw-1,y-16,1.5,0,7);c.fill()}
+function drawReeds(c,x,y,t,k){c.strokeStyle='#4f7a2a';c.lineWidth=1.6;for(let i=0;i<5;i++){const bx=x+i*3-6,sw=Math.sin(t/500+k+i)*1.5;c.beginPath();c.moveTo(bx,y);c.quadraticCurveTo(bx+sw*.5,y-7,bx+sw,y-13-(i%3)*2);c.stroke();if(i%2===0){c.fillStyle='#7a5530';c.fillRect(bx+sw-1,y-16-(i%3)*2,2,4)}}}
 let DIFF=1;
 function newGame(seed,diff){
   if(diff!==undefined)DIFF=diff;
@@ -271,30 +290,42 @@ let AC=null,muted=false;
 let musicT=null,musicOn=localStorage.getItem('nile-music')!=='0';
 let fontScale=+(localStorage.getItem('nile-font')||100);
 function setFont(d){fontScale=Math.max(80,Math.min(140,fontScale+d*10));localStorage.setItem('nile-font',fontScale);document.documentElement.style.fontSize=(fontScale/100*16)+'px';document.getElementById('panel').style.fontSize=(fontScale/100)+'em';toast('حجم الخط '+fontScale+'%')}
+const ERASC=[[293.7,329.6,370,440,493.9,587.3],[261.6,293.7,311.1,392,415.3,523.3],[220,246.9,261.6,329.6,349.2,440],[293.7,311.1,392,440,466.2,587.3],[329.6,370,415.3,493.9,554.4,659.3],[261.6,329.6,392,493.9,523.3,659.3]];
+let ambN=null,ambG=null;
 function startMusic(){
-  if(muted||musicT)return;
+  if(musicT)return;
   try{
     AC=AC||new (window.AudioContext||window.webkitAudioContext)();
-    const sc=[293.7,329.6,370,440,493.9,587.3];let i=0;
+    // ambient Nile: filtered noise with slow swell
+    const len=AC.sampleRate*2,buf=AC.createBuffer(1,len,AC.sampleRate),d=buf.getChannelData(0);let l=0;for(let i=0;i<len;i++){l=(l+0.02*(Math.random()*2-1))/1.02;d[i]=l*3}
+    ambN=AC.createBufferSource();ambN.buffer=buf;ambN.loop=true;const bp=AC.createBiquadFilter();bp.type='bandpass';bp.frequency.value=500;bp.Q.value=.4;ambG=AC.createGain();ambG.gain.value=.0;
+    const lfo=AC.createOscillator(),lg=AC.createGain();lfo.frequency.value=.12;lg.gain.value=.012;lfo.connect(lg);lg.connect(ambG.gain);lfo.start();
+    ambN.connect(bp);bp.connect(ambG);ambG.connect(AC.destination);ambN.start();
+    let i=0,tick2=0;
     musicT=setInterval(()=>{
-      if(muted||!musicOn||!AC||S.speed===0)return;
-      const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
-      o.type='sine';o.frequency.value=sc[(i*3+((Math.random()*3)|0))%sc.length]*(Math.random()<.2?.5:1);i++;
+      tick2++;
+      if(ambG)ambG.gain.value=(muted||!musicOn||!S||S.speed===0)?0:.022;
+      if(muted||!musicOn||!AC||!S||S.speed===0)return;
+      const t=AC.currentTime,sc=ERASC[Math.min(5,era())];
+      const o=AC.createOscillator(),g=AC.createGain();
+      o.type=era()>=3?'triangle':'sine';o.frequency.value=sc[(i*3+((Math.random()*3)|0))%sc.length]*(Math.random()<.2?.5:1);i++;
       g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.035,t+.3);g.gain.exponentialRampToValueAtTime(.0001,t+2.2);
       o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+2.3);
+      if(tick2%7===3){const dn=((S.day%16)/16);if(Math.sin(dn*Math.PI*2)>=-.1){const b=AC.createOscillator(),bg=AC.createGain();b.type='sine';b.frequency.setValueAtTime(2200,t);b.frequency.exponentialRampToValueAtTime(3300,t+.12);b.frequency.exponentialRampToValueAtTime(2600,t+.25);bg.gain.setValueAtTime(.0001,t);bg.gain.exponentialRampToValueAtTime(.015,t+.04);bg.gain.exponentialRampToValueAtTime(.0001,t+.3);b.connect(bg);bg.connect(AC.destination);b.start(t);b.stop(t+.32)}}
     },1100);
   }catch(e){}
 }
 document.addEventListener('pointerdown',startMusic,{once:true});
+const MEL={win:[523,659,784,1047],tech:[392,523,659,784],event:[440,554,659],alarm:[220,185,220,185],build:[330,440],bad:[200,120],click:[400],gift:[523,659]};
 function sfx(k){
   if(muted)return;
   try{
     AC=AC||new (window.AudioContext||window.webkitAudioContext)();
-    const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
-    const f={build:[330,440],win:[523,784],bad:[200,120],click:[400,400]}[k]||[300,300];
-    o.type=k==='bad'?'sawtooth':'triangle';o.frequency.setValueAtTime(f[0],t);o.frequency.linearRampToValueAtTime(f[1],t+.15);
-    g.gain.setValueAtTime(.06,t);g.gain.exponentialRampToValueAtTime(.001,t+.25);
-    o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.26);
+    const notes=MEL[k]||[300];const t0=AC.currentTime;
+    notes.forEach((f,i)=>{const t=t0+i*.11,o=AC.createOscillator(),g=AC.createGain();
+      o.type=(k==='bad'||k==='alarm')?'sawtooth':'triangle';o.frequency.setValueAtTime(f,t);
+      g.gain.setValueAtTime(.06,t);g.gain.exponentialRampToValueAtTime(.001,t+.22);
+      o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.24)});
   }catch(e){}
 }
 
@@ -358,6 +389,7 @@ function rates(){
   if(S.storm&&S.day<S.storm){food*=.9;wood*=.9;stone*=.9}
   if(hasPol('agr')&&food>0)food*=1.2;if(hasPol('sci'))sci*=1.3;if(hasPol('mer'))gold*=1.3;if(hasPol('pie'))cul*=1.4;
   for(const k in S.caravans)if(S.caravans[k]>0)gold+=2.5;
+  for(const n of S.neigh)if(n.deal>S.day&&!n.conquered)gold+=NEIGH_DEF.find(d=>d.id===n.id).p==='trader'?6:4;
   for(const n of S.neigh)if(n.conquered)gold+=2.2;
   const eat=S.pop*.2*[.85,1,1.15][S.diff===undefined?1:S.diff];
   food-=eat;
@@ -374,12 +406,12 @@ function tick(){
   if(S.pop>housing())S.pop=Math.max(housing(),S.pop-1);
   for(const k of ['wood','stone'])if(S.res[k]>9999)S.res[k]=9999;
   // research
-  if(S.research){S.rp+=Math.max(0,S.res.science);S.res.science=0;const c=TECH[S.research].c;if(S.rp>=c){S.techs[S.research]=true;addLog('اكتشفت: '+TECH[S.research].n);hist('اكتشاف '+TECH[S.research].n);toast('🔬 تم اكتشاف '+TECH[S.research].n);S.rp-=c;S.research=null;if(era()>S.lastEra){S.lastEra=era();hist('دخلت عصر '+ERA[era()]);showModal('<h2>عصر جديد!</h2><p>دخلت حضارتك: <b>'+ERA[era()]+'</b></p><button onclick="closeModal()">متابعة</button>')}}}
+  if(S.research){S.rp+=Math.max(0,S.res.science);S.res.science=0;const c=TECH[S.research].c;if(S.rp>=c){S.techs[S.research]=true;addLog('اكتشفت: '+TECH[S.research].n);sfx('tech');hist('اكتشاف '+TECH[S.research].n);toast('🔬 تم اكتشاف '+TECH[S.research].n);S.rp-=c;S.research=null;if(era()>S.lastEra){S.lastEra=era();hist('دخلت عصر '+ERA[era()]);showModal('<h2>عصر جديد!</h2><p>دخلت حضارتك: <b>'+ERA[era()]+'</b></p><button onclick="closeModal()">متابعة</button>')}}}
   S.day++;
   if(S.pop<=3&&S.res.food<=0&&!S.flags.collapsed&&S.day>60){S.flags.collapsed=1;hist('انهارت المدينة');S.speed=0;showModal('<h2>🏚️ انهارت المدينة</h2><p>الجوع قضى على معظم السكان. تعلّم من الدرس: ابنِ المزارع والمصائد مبكراً وخزّن الغذاء.</p><p class="small">النقاط: '+S.score+'</p><button onclick="closeModal();S.flags.collapsed=0;S.res.food+=80;S.pop+=8;S.speed=1">إنقاذ المدينة (مساعدة من النهر +80 غذاء)</button><button onclick="closeModal();newGame(0,S.diff);renderAll();save()">ابدأ من جديد</button>')}
   if(S.day%10===0){S.stat=S.stat||[];S.stat.push([S.day,Math.floor(S.pop),Math.floor(S.res.food),Math.floor(S.res.gold),Math.floor(S.res.culture)]);if(S.stat.length>150)S.stat.shift()}
   // events
-  if(S.day%28===0&&rnd()<.75){const e=EVENTS[(rnd()*EVENTS.length)|0];e.f(S);addLog(e.t+': '+e.m);toast('📜 '+e.t)}
+  if(S.day%28===0&&rnd()<.75){const e=EVENTS[(rnd()*EVENTS.length)|0];e.f(S);addLog(e.t+': '+e.m);toast('📜 '+e.t);sfx('event')}
   if(S.day%47===0&&S.day>30&&!curDec&&$('#modal').style.display!=='flex'){const d=DECISIONS[(rnd()*DECISIONS.length)|0];curDec=d;showModal('<h2>📜 '+d.t+'</h2><p>'+d.m+'</p><button onclick="decide(0)">'+d.a[0]+'</button><button onclick="decide(1)">'+d.b[0]+'</button>')}
   checkQuests();checkWin();
   // neighbors
@@ -394,11 +426,12 @@ function tick(){
   S.score=Math.floor(S.pop*2+S.res.culture*.5+Object.keys(S.techs).length*30+S.neigh.filter(n=>n.conquered).length*150+(S.wonder?500:0)+(S.grand?1500:0));
 }
 function raid(){
-  const live=S.neigh.filter(n=>!n.conquered&&!n.ally);
+  const live=S.neigh.filter(n=>!n.conquered&&!n.ally&&!(n.pact>S.day));
   S.raidIn=70+((rnd()*60)|0);
   if(!live.length)return;
   const n=live[(rnd()*live.length)|0];
-  const atk=n.str*(.8+rnd()*.5)*(.6+era()*.25)*[.7,1,1.4][S.diff===undefined?1:S.diff]*(hasPol('mil')?.85:1)*(hasTech('diplomacy')?.85:1);
+  const pw=NEIGH_DEF.find(d=>d.id===n.id).p;if(pw==='warlike'&&powerOf(S.army)>n.str*1.2&&rnd()<.4){addLog('الهكسوس رأوا قوة جيشك وتراجعوا.');return}
+  const atk=n.str*(pw==='warlike'?1.1:1)*(.8+rnd()*.5)*(.6+era()*.25)*[.7,1,1.4][S.diff===undefined?1:S.diff]*(hasPol('mil')?.85:1)*(hasTech('diplomacy')?.85:1);
   const def=defense();
   if(S.day<40){addLog('كشافة '+NEIGH_DEF.find(d=>d.id===n.id).n+' رصدوا قريتك ثم انسحبوا.');return}
   if(S.caravans[n.id]>0&&n.rel>60&&rnd()<.6){addLog(NEIGH_DEF.find(d=>d.id===n.id).n+' احترموا علاقة التجارة وعادوا.');return}
@@ -412,7 +445,7 @@ function raid(){
     const dead=Math.floor(S.pop*.06);S.pop=Math.max(3,S.pop-dead);
     for(const u in S.army)S.army[u]=Math.floor(S.army[u]*.6);
     addLog('نهب '+NEIGH_DEF.find(d=>d.id===n.id).n+' قريتك! خسرت '+lf+' غذاء و'+lg+' ذهب.');
-    showModal('<h2>⚔️ غارة!</h2><p>هاجمك <b>'+NEIGH_DEF.find(d=>d.id===n.id).n+'</b> (قوة '+Math.floor(atk)+') ودفاعك '+Math.floor(def)+'.<br>خسرت '+lf+' غذاء و'+lg+' ذهب و'+dead+' من السكان.<br>درّب جنوداً وابنِ أسواراً.</p><button onclick="closeModal()">حسناً</button>');
+    sfx('alarm');showModal('<h2>⚔️ غارة!</h2><p>هاجمك <b>'+NEIGH_DEF.find(d=>d.id===n.id).n+'</b> (قوة '+Math.floor(atk)+') ودفاعك '+Math.floor(def)+'.<br>خسرت '+lf+' غذاء و'+lg+' ذهب و'+dead+' من السكان.<br>درّب جنوداً وابنِ أسواراً.</p><button onclick="closeModal()">حسناً</button>');
   }
 }
 
@@ -474,11 +507,18 @@ function doCaravan(id){
   S.res.gold-=40;S.caravans[id]=1;const n=S.neigh.find(q=>q.id===id);n.rel=Math.min(100,n.rel+20);
   addLog('أرسلت قافلة إلى '+NEIGH_DEF.find(d=>d.id===id).n);toast('🐫 القافلة انطلقت: +2.5 ذهب يومياً');
 }
-function doGift(id){if(S.res.gold<50){toast('❌ تحتاج 50 ذهب');return}const n=S.neigh.find(q=>q.id===id);S.res.gold-=50;n.rel=Math.min(100,n.rel+15);addLog('أرسلت هدية إلى '+NEIGH_DEF.find(d=>d.id===id).n);toast('🎁 تحسنت العلاقة')}
+function doGift(id){if(S.res.gold<50){toast('❌ تحتاج 50 ذهب');return}const n=S.neigh.find(q=>q.id===id);S.res.gold-=50;n.rel=Math.min(100,n.rel+(NEIGH_DEF.find(d=>d.id===id).p==='proud'?8:15));addLog('أرسلت هدية إلى '+NEIGH_DEF.find(d=>d.id===id).n);toast('🎁 تحسنت العلاقة')}
 function doAlly(id){const n=S.neigh.find(q=>q.id===id);if(n.ally){toast('حلفاء بالفعل');return}if(!hasTech('trade')){toast('🔒 يحتاج بحث التجارة');return}if(n.rel<70){toast('❌ العلاقة يجب أن تكون 70+ (أرسل هدايا وقوافل)');return}if(S.res.gold<120){toast('❌ تحتاج 120 ذهب');return}S.res.gold-=120;n.ally=true;addLog('تحالفت مع '+NEIGH_DEF.find(d=>d.id===id).n);hist('تحالف مع '+NEIGH_DEF.find(d=>d.id===id).n);toast('🤝 تحالف! لن يغيروا عليك');sfx('win')}
 function doTribute(id){const n=S.neigh.find(q=>q.id===id);if(n.ally||n.conquered)return;if(powerOf(S.army)<n.str*1.1){toast('❌ جيشك أضعف من أن تفرض جزية');return}const g=Math.floor(n.str*4);S.res.gold+=g;n.rel=Math.max(0,n.rel-25);toast('💰 دفعوا جزية '+g+' ذهب');addLog('فرضت جزية على '+NEIGH_DEF.find(d=>d.id===id).n)}
+function nOf(id){return S.neigh.find(q=>q.id===id)}
+function nName(id){return NEIGH_DEF.find(d=>d.id===id).n}
+function doEnvoy(id){const n=nOf(id);if(n.conquered)return;if(S.res.gold<30){toast('❌ تحتاج 30 ذهب');return}S.res.gold-=30;n.rel=Math.min(100,n.rel+8);const mood=n.rel>=70?'ودّي جداً':n.rel>=45?'محايد':'متوتر';const fut=(n.pact>S.day)?'ملتزم بالمعاهدة':(n.rel<40?'قد يغير عليك قريباً':'لا يخطط للهجوم');addLog('مبعوثك إلى '+nName(id)+': مزاجهم '+mood+' ('+fut+'). قوتهم ~'+Math.floor(n.str/5)*5);toast('📨 عاد المبعوث: '+mood+' / '+fut)}
+function doDeal(id){const n=nOf(id);if(n.conquered)return;if(!hasTech('trade')){toast('🔒 يحتاج بحث التجارة');return}if(n.deal>S.day){toast('الاتفاقية سارية بالفعل');return}if(n.rel<50){toast('❌ العلاقة يجب أن تكون 50+');return}if(S.res.gold<60){toast('❌ تحتاج 60 ذهب');return}S.res.gold-=60;n.deal=S.day+90;const g=NEIGH_DEF.find(d=>d.id===id).p==='trader'?6:4;addLog('وقّعت اتفاقية تجارية مع '+nName(id)+' لمدة 90 يوماً (+'+g+' ذهب يومياً)');toast('📜 اتفاقية تجارية: +'+g+' ذهب يومياً')}
+function doPact(id){const n=nOf(id);if(n.conquered||n.ally)return;if(n.pact>S.day){toast('المعاهدة سارية بالفعل');return}if(n.rel<60){toast('❌ العلاقة يجب أن تكون 60+');return}if(S.res.gold<80){toast('❌ تحتاج 80 ذهب');return}S.res.gold-=80;n.pact=S.day+150;addLog('وقّعت معاهدة عدم اعتداء مع '+nName(id)+' لمدة 150 يوماً');toast('🕊️ معاهدة عدم اعتداء')}
+function doSpy(id){const n=nOf(id);if(n.conquered)return;if(S.res.gold<60){toast('❌ تحتاج 60 ذهب');return}S.res.gold-=60;const ch=.55+(hasTech('writing')?.1:0)+(hasTech('diplomacy')?.1:0)-(n.str>60?.1:0);if(rnd()<ch){const loot=Math.min(120,Math.floor(20+n.str*1.5));S.res.gold+=loot;addLog('جواسيسك في '+nName(id)+' نجحوا: سرقوا '+loot+' ذهب. القوة الحقيقية '+Math.floor(n.str));toast('🕵️ نجحت المهمة: +'+loot+' ذهب');sfx('win')}else{n.rel=Math.max(0,n.rel-20);addLog('اكتشف '+nName(id)+' جواسيسك! تدهورت العلاقة.');toast('⚠️ فُضح الجواسيس: العلاقة -20')}}
 function doAttack(id){
   const n=S.neigh.find(q=>q.id===id);if(n.conquered)return;
+  if(n.pact>S.day||n.ally){n.pact=0;n.ally=false;n.rel=Math.max(0,n.rel-40);for(const o of S.neigh)if(o.id!==id)o.rel=Math.max(0,o.rel-10);addLog('نقضت عهدك مع '+nName(id)+'! الجيران لا يثقون بك الآن.')}
   if(totalArmy()<4){toast('❌ جيشك صغير جداً');return}
   const my=powerOf(S.army)*(.85+rnd()*.35);const th=n.str*(.9+rnd()*.3)*1.15;
   const nm=NEIGH_DEF.find(d=>d.id===id).n;
@@ -619,13 +659,13 @@ function renderPanel(force){
       return '<div class="card"><canvas class="uic" data-u="'+k+'" width="40" height="34" style="float:left;margin-left:6px"></canvas><b>'+d.n+' ×'+(S.army[k]||0)+'</b><div class="small">قوة '+d.p+' | '+costStr(d.cost)+'</div><button data-u="'+k+'">تدريب</button></div>'}).join('')+'</div>';
   }else if(tab==='trade'){
     h='<div class="grid">'+S.neigh.map(n=>{const d=NEIGH_DEF.find(q=>q.id===n.id);
-      return '<div class="card"><b>'+d.i+' '+d.n+'</b> <span class="small">('+d.dir+')</span><div class="small">القوة: '+Math.floor(n.str)+' | العلاقة: '+Math.floor(n.rel)+'</div>'+(n.conquered?'<div class="small">✅ تحت سيطرتك (+2.2 ذهب/يوم)</div>':'<button data-c="'+n.id+'">'+(S.caravans[n.id]?'قافلة نشطة 🐫':'🐫 قافلة تجارة (40 ذهب)')+'</button><button data-g="'+n.id+'">🎁 هدية (50)</button><button data-al="'+n.id+'">'+(n.ally?'🤝 حليف':'🤝 تحالف (120)')+'</button><button data-tr="'+n.id+'">💰 فرض جزية</button><button data-a="'+n.id+'">⚔️ هجوم</button>')+'</div>'}).join('')+'</div>';
+      return '<div class="card"><b>'+d.i+' '+d.n+'</b> <span class="small">('+d.dir+')</span><div class="small">'+PERS[d.p].n+': '+PERS[d.p].d+'</div><div class="small">القوة: '+Math.floor(n.str)+' | العلاقة: '+Math.floor(n.rel)+'</div>'+(n.conquered?'<div class="small">✅ تحت سيطرتك (+2.2 ذهب/يوم)</div>':'<button data-c="'+n.id+'">'+(S.caravans[n.id]?'قافلة نشطة 🐫':'🐫 قافلة تجارة (40 ذهب)')+'</button><button data-g="'+n.id+'">🎁 هدية (50)</button><button data-al="'+n.id+'">'+(n.ally?'🤝 حليف':'🤝 تحالف (120)')+'</button><button data-tr="'+n.id+'">💰 فرض جزية</button><button data-env="'+n.id+'">📨 مبعوث (30)</button><button data-dl="'+n.id+'">'+(n.deal>S.day?'📜 اتفاقية سارية ('+(n.deal-S.day)+' ي)':'📜 اتفاقية تجارية (60)')+'</button><button data-pc="'+n.id+'">'+(n.pact>S.day?'🕊️ معاهدة سارية ('+(n.pact-S.day)+' ي)':'🕊️ معاهدة عدم اعتداء (80)')+'</button><button data-sp="'+n.id+'">🕵️ جاسوس (60)</button><button data-a="'+n.id+'">⚔️ هجوم</button>')+'</div>'}).join('')+'</div>';
   }else if(tab==='pol'){
     h='<div class="small">خانات السياسة: '+Object.keys(pols()).length+'/'+polSlots()+' (تزيد مع العصور). السياسة تُشترى بالثقافة وتبقى فعالة حتى تلغيها.</div><div class="grid">'+Object.keys(POL).map(k=>{const d=POL[k];return '<div class="card'+(hasPol(k)?' sel':'')+'"><b>'+d.i+' '+d.n+'</b><div class="small">'+d.d+'</div><div class="small">🎭 '+d.c+'</div><button data-p="'+k+'">'+(hasPol(k)?'إلغاء':'إصدار')+'</button></div>'}).join('')+'</div>';
   }else if(tab==='log'){
     h='<div class="card" style="flex-basis:100%"><b>📖 دفتر التاريخ</b><div class="small">'+((S.hist||[]).join('<br>')||'لا أحداث بعد')+'</div></div><div class="small" style="margin-top:6px"><b>السجل:</b><br>'+S.log.map(x=>'• '+x).join('<br>')+'</div>';
   }else if(tab==='menu'){
-    h='<div class="grid"><div class="card"><b>⚙️ القائمة</b><button data-m="help">كيف ألعب؟</button><button data-m="mute">'+(muted?'🔇 تشغيل الصوت':'🔊 كتم الصوت')+'</button><button data-m="cname">✏️ اسم المدينة</button><button data-m="score">🏅 تفاصيل النقاط</button><button data-m="save">حفظ الآن</button><button data-m="new">لعبة جديدة</button><button data-m="dyn">👑 أسرة جديدة (2000 نقطة)</button><div class="small">الصعوبة الحالية: '+['سهل','عادي','صعب'][S.diff===undefined?1:S.diff]+'</div></div><div class="card"><b>💾 خانات الحفظ</b>'+[1,2,3].map(i=>'<div class="small">'+i+': '+slotInfo(i)+'</div><div style="display:flex;gap:4px"><button data-slot="'+i+'" data-act="s">حفظ</button><button data-slot="'+i+'" data-act="l">تحميل</button></div>').join('')+'</div><div class="card" style="flex-basis:100%"><b>📊 الإحصاءات</b><canvas id="stc" width="300" height="120" style="width:100%;border-radius:6px"></canvas><div class="small"><span style="color:#7bc96f">■ السكان</span> <span style="color:#e8c13d">■ الغذاء</span> <span style="color:#fff">■ الذهب</span> <span style="color:#c06bd1">■ الثقافة</span></div></div><div class="card"><b>⚙️ الإعدادات</b><button data-m="music">'+(musicOn?'🎵 الموسيقى: تعمل':'🎵 الموسيقى: متوقفة')+'</button><button data-m="fontp">🔠 تكبير الخط</button><button data-m="fontm">🔡 تصغير الخط</button></div><div class="card"><b>🏆 النتيجة: '+S.score+'</b><div class="small">أيام: '+S.day+' | سكان: '+Math.floor(S.pop)+' | علوم: '+Object.keys(S.techs).length+'/'+Object.keys(TECH).length+'</div></div></div><div class="card" style="flex-basis:100%"><b>🏆 شروط النصر</b><div class="small">'+WINS.map(w=>(S.won&&S.won[w.id]?'✅ ':'⬜ ')+w.t+': '+w.d).join('<br>')+'</div></div><div class="card" style="flex-basis:100%"><b>🏅 الإنجازات</b><div class="small">'+ACH.map(a=>(S.ach&&S.ach[a.id]?'✅ ':'⬜ ')+a.t+' ('+a.d+')').join('<br>')+'</div></div></div>';
+    h='<div class="grid"><div class="card"><b>⚙️ القائمة</b><button data-m="help">كيف ألعب؟</button><button data-m="mute">'+(muted?'🔇 تشغيل الصوت':'🔊 كتم الصوت')+'</button><button data-m="cname">✏️ اسم المدينة</button><button data-m="score">🏅 تفاصيل النقاط</button><button data-m="save">حفظ الآن</button><button data-m="new">لعبة جديدة</button><button data-m="dyn">👑 أسرة جديدة (2000 نقطة)</button><div class="small">بذرة الخريطة: '+S.seed+'</div><div class="small">الصعوبة الحالية: '+['سهل','عادي','صعب'][S.diff===undefined?1:S.diff]+'</div></div><div class="card"><b>💾 خانات الحفظ</b>'+[1,2,3].map(i=>'<div class="small">'+i+': '+slotInfo(i)+'</div><div style="display:flex;gap:4px"><button data-slot="'+i+'" data-act="s">حفظ</button><button data-slot="'+i+'" data-act="l">تحميل</button></div>').join('')+'</div><div class="card" style="flex-basis:100%"><b>📊 الإحصاءات</b><canvas id="stc" width="300" height="120" style="width:100%;border-radius:6px"></canvas><div class="small"><span style="color:#7bc96f">■ السكان</span> <span style="color:#e8c13d">■ الغذاء</span> <span style="color:#fff">■ الذهب</span> <span style="color:#c06bd1">■ الثقافة</span></div></div><div class="card"><b>⚙️ الإعدادات</b><button data-m="music">'+(musicOn?'🎵 الموسيقى: تعمل':'🎵 الموسيقى: متوقفة')+'</button><button data-m="fontp">🔠 تكبير الخط</button><button data-m="fontm">🔡 تصغير الخط</button></div><div class="card"><b>🏆 النتيجة: '+S.score+'</b><div class="small">أيام: '+S.day+' | سكان: '+Math.floor(S.pop)+' | علوم: '+Object.keys(S.techs).length+'/'+Object.keys(TECH).length+'</div></div></div><div class="card" style="flex-basis:100%"><b>🏆 شروط النصر</b><div class="small">'+WINS.map(w=>(S.won&&S.won[w.id]?'✅ ':'⬜ ')+w.t+': '+w.d).join('<br>')+'</div></div><div class="card" style="flex-basis:100%"><b>🏅 الإنجازات</b><div class="small">'+ACH.map(a=>(S.ach&&S.ach[a.id]?'✅ ':'⬜ ')+a.t+' ('+a.d+')').join('<br>')+'</div></div></div>';
   }
   const sc=panel.scrollTop;panel.innerHTML=h;panel.scrollTop=sc;if(tab==='menu')drawStats();if(tab==='army')drawUnits();
 }
@@ -641,6 +681,10 @@ panel.addEventListener('click',e=>{
   else if(b.dataset.c){doCaravan(b.dataset.c)}
   else if(b.dataset.a){doAttack(b.dataset.a)}
   else if(b.dataset.g){doGift(b.dataset.g)}
+  else if(b.dataset.env){doEnvoy(b.dataset.env)}
+  else if(b.dataset.dl){doDeal(b.dataset.dl)}
+  else if(b.dataset.pc){doPact(b.dataset.pc)}
+  else if(b.dataset.sp){doSpy(b.dataset.sp)}
   else if(b.dataset.al){doAlly(b.dataset.al)}
   else if(b.dataset.tr){doTribute(b.dataset.tr)}
   else if(b.dataset.m==='help')showTut(0);
@@ -651,7 +695,7 @@ panel.addEventListener('click',e=>{
   else if(b.dataset.m==='cname'){const v=prompt('اسم مدينتك (حتى 14 حرفاً):',S.cityName||'');if(v!==null){S.cityName=v.trim().slice(0,14);save();renderTop();toast('🏛️ '+(S.cityName||'بلا اسم'))}}
   else if(b.dataset.m==='score'){const tc=Object.keys(S.techs).length,cq=S.neigh.filter(n=>n.conquered).length;const rows=[['السكان',Math.floor(S.pop*2)],['الثقافة',Math.floor(S.res.culture*.5)],['الاكتشافات ('+tc+')',tc*30],['الجيران المهزومون ('+cq+')',cq*150],['الهرم الأكبر',S.wonder?500:0],['النصر الأكبر',S.grand?1500:0]];showModal('<h2>🏅 تفاصيل النقاط</h2><div style="text-align:right">'+rows.map(r=>'<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #5a4630"><b>'+r[1]+'</b><span>'+r[0]+'</span></div>').join('')+'</div><p>المجموع: <b>'+S.score+'</b></p><button onclick="closeModal()">إغلاق</button>')}
   else if(b.dataset.m==='save'){save();toast('💾 تم الحفظ')}
-  else if(b.dataset.m==='new'){showModal('<h2>لعبة جديدة؟</h2><p>سيُمسح التقدم الحالي (احفظ في خانة أولاً). اختر الصعوبة:</p><button onclick="closeModal();newGame(0,0);save();renderAll();toast(\'بدأت حضارة جديدة (سهل)\')">🙂 سهل</button><button onclick="closeModal();newGame(0,1);save();renderAll();toast(\'بدأت حضارة جديدة\')">⚖️ عادي</button><button onclick="closeModal();newGame(0,2);save();renderAll();toast(\'بدأت حضارة جديدة (صعب)\')">💀 صعب</button><button onclick="closeModal()">إلغاء</button>')}
+  else if(b.dataset.m==='new'){showModal('<h2>🌍 لعبة جديدة</h2><p>سيُمسح التقدم الحالي (احفظ في خانة أولاً). اكتب اسماً أو رقماً لتوليد خريطة محددة، أو اتركه فارغاً لخريطة عشوائية.</p><input id="seedIn" placeholder="بذرة الخريطة (اختياري)" maxlength="20" style="width:90%;padding:8px;border-radius:8px;border:1px solid #c9a24a;background:#2a1d10;color:#f5e6c4;text-align:center;margin-bottom:6px"><div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap"><button onclick="startNew(0)">🙂 سهل</button><button onclick="startNew(1)">⚖️ عادي</button><button onclick="startNew(2)">💀 صعب</button></div><button onclick="document.getElementById(\'seedIn\').value=Math.floor(Math.random()*99999)">🎲 بذرة عشوائية</button><button onclick="closeModal()">إلغاء</button>')}
   renderTop();renderPanel();
 });
 const TUT=[
@@ -678,20 +722,41 @@ function draw(time){
   ctx.fillStyle='#1b3a5a';ctx.fillRect(0,0,VW,VH);
   ctx.save();ctx.scale(cam.z,cam.z);ctx.translate(-cam.x,-cam.y);
   const x0=Math.max(0,Math.floor(cam.x/T)),y0=Math.max(0,Math.floor(cam.y/T)),x1=Math.min(W-1,Math.ceil((cam.x+VW/cam.z)/T)),y1=Math.min(H-1,Math.ceil((cam.y+VH/cam.z)/T));
-  const phase=time/900;
+  const phase=time/900;const veg=[];
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
     const t=S.tiles[idx(x,y)];
-    let c=TCOL[t.t];
-    ctx.fillStyle=c;ctx.fillRect(x*T,y*T,T+.5,T+.5);
-    if(t.t<=1){ctx.fillStyle='rgba(255,255,255,.12)';const o=Math.sin(phase+x*.9+y*.5)*3;ctx.fillRect(x*T+6+o,y*T+10,T*.5,2);ctx.fillRect(x*T+3-o,y*T+22,T*.4,2)}
-    else if(t.t===TILE.HILL){ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.moveTo(x*T+4,y*T+T-5);ctx.lineTo(x*T+T/2,y*T+7);ctx.lineTo(x*T+T-4,y*T+T-5);ctx.fill()}
-    else if(t.t===TILE.DESERT&&((x*7+y*13)%5===0)){ctx.fillStyle='rgba(120,80,20,.25)';ctx.fillRect(x*T+8,y*T+14,10,3)}
-    if(t.t===TILE.GRASS||t.t===TILE.FERTILE){const hsh=(x*73856093^y*19349663)>>>0;if(hsh%4===0&&!t.b){ctx.font='15px serif';ctx.fillText(hsh%8===0?'🌴':'🌿',x*T+T*.5,y*T+T*.55)}}
-    if(t.t>1){for(const [dx,dy,ex,ey,ew,eh] of [[0,-1,0,0,T,3],[0,1,0,T-3,T,3],[-1,0,0,0,3,T],[1,0,T-3,0,3,T]]){const nx=x+dx,ny=y+dy;if(inb(nx,ny)&&S.tiles[idx(nx,ny)].t<=1){ctx.fillStyle='rgba(60,40,10,.3)';ctx.fillRect(x*T+ex,y*T+ey,ew,eh)}}}
-    if(t.t===TILE.DESERT&&((x*5+y*3)%7===0)){ctx.strokeStyle='rgba(150,100,30,.35)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x*T+T/2,y*T+T*.7,9,Math.PI*1.1,Math.PI*1.9);ctx.stroke()}
-    if(t.t===TILE.HILL){ctx.fillStyle='rgba(255,255,255,.15)';ctx.beginPath();ctx.moveTo(x*T+T/2,y*T+7);ctx.lineTo(x*T+T/2+5,y*T+16);ctx.lineTo(x*T+T/2-2,y*T+16);ctx.fill()}
-    if(t.t===TILE.FERTILE){ctx.fillStyle='rgba(30,90,20,.18)';ctx.fillRect(x*T+3,y*T+T-8,T-6,2);ctx.fillRect(x*T+3,y*T+T-16,T-6,2)}
+    const h=hv(x,y),px=x*T,py=y*T;
+    ctx.fillStyle=TCOL[t.t];ctx.fillRect(px,py,T+.5,T+.5);
+    ctx.fillStyle=(h&3)===0?'rgba(255,255,255,.05)':(h&3)===1?'rgba(0,0,0,.05)':'rgba(0,0,0,0)';ctx.fillRect(px,py,T+.5,T+.5);
+    if(t.t<=1){
+      const o=Math.sin(phase+x*.9+y*.5)*3;ctx.fillStyle='rgba(255,255,255,.14)';ctx.fillRect(px+6+o,py+10,T*.5,2);ctx.fillRect(px+3-o,py+22,T*.4,2);
+      ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1.2;ctx.beginPath();for(let i=0;i<2;i++){const yy=py+8+i*14,ph2=phase*1.3+x*.7+i;ctx.moveTo(px,yy+Math.sin(ph2)*2);ctx.quadraticCurveTo(px+T*.5,yy+Math.sin(ph2+1.5)*3,px+T,yy+Math.sin(ph2+3)*2)}ctx.stroke();
+      if(Math.sin(time/260+h%97)>.965){ctx.fillStyle='rgba(255,255,230,.9)';const gx=px+4+(h%24),gy=py+4+((h>>5)%24);ctx.fillRect(gx,gy,2,2);ctx.fillRect(gx-2,gy+.5,6,1);ctx.fillRect(gx+.5,gy-2,1,6)}
+      for(const [dx,dy,ex,ey,ew,eh] of [[0,-1,0,0,T,4],[0,1,0,T-4,T,4],[-1,0,0,0,4,T],[1,0,T-4,0,4,T]]){const nx=x+dx,ny=y+dy;if(inb(nx,ny)&&S.tiles[idx(nx,ny)].t>1){ctx.fillStyle='rgba(235,245,255,'+(.22+Math.sin(phase*1.5+x+y)*.08)+')';ctx.fillRect(px+ex,py+ey,ew,eh)}}
+    }
+    else if(t.t===TILE.HILL){
+      ctx.fillStyle='rgba(0,0,0,.14)';ctx.fillRect(px,py+T*.72,T,T*.28);
+      const hh=T*(.62+(h%4)*.06);ctx.fillStyle='#8a7455';ctx.beginPath();ctx.moveTo(px+2,py+T-3);ctx.lineTo(px+T/2,py+T-3-hh);ctx.lineTo(px+T-2,py+T-3);ctx.fill();
+      ctx.fillStyle='#b39c78';ctx.beginPath();ctx.moveTo(px+2,py+T-3);ctx.lineTo(px+T/2,py+T-3-hh);ctx.lineTo(px+T/2+2,py+T-3);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.25)';ctx.beginPath();ctx.moveTo(px+T/2,py+T-3-hh);ctx.lineTo(px+T/2+4,py+T-3-hh+7);ctx.lineTo(px+T/2-3,py+T-3-hh+7);ctx.fill();
+    }
+    else if(t.t===TILE.DESERT){
+      if(h%5===0){ctx.fillStyle='rgba(120,80,20,.22)';ctx.fillRect(px+8,py+14,10,3)}
+      if(h%3===0){const g=ctx.createLinearGradient(px,py+T*.4,px,py+T);g.addColorStop(0,'rgba(255,240,190,.28)');g.addColorStop(1,'rgba(150,100,30,.28)');ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(px+T/2+((h>>3)%9)-4,py+T*.7,T*.42,T*.2,0,Math.PI,0);ctx.lineTo(px+T*.1,py+T*.7);ctx.fill();ctx.strokeStyle='rgba(150,100,30,.4)';ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(px+T/2+((h>>3)%9)-4,py+T*.7,T*.42,T*.2,0,Math.PI,0);ctx.stroke()}
+      if(h%11===0&&!t.b&&!t.r){ctx.fillStyle='#8d8575';ctx.beginPath();ctx.ellipse(px+T*.5,py+T*.7,6,4,0,0,7);ctx.fill();ctx.fillStyle='rgba(255,255,255,.25)';ctx.beginPath();ctx.ellipse(px+T*.45,py+T*.66,3,2,0,0,7);ctx.fill()}
+    }
+    else if(t.t===TILE.GRASS||t.t===TILE.FERTILE){
+      if(t.t===TILE.FERTILE){ctx.fillStyle='rgba(30,90,20,.18)';ctx.fillRect(px+3,py+T-8,T-6,2);ctx.fillRect(px+3,py+T-16,T-6,2)}
+      if(!t.b&&!t.r){
+        const nearR=adj(x,y,[1]);
+        if(h%8===0)veg.push([0,px+T*.5,py+T*.85,h%7]);
+        else if(nearR&&h%3===0)veg.push([1,px+T*.5,py+T*.9,h%5]);
+        else if(h%6===1){ctx.fillStyle='rgba(30,70,20,.5)';ctx.fillRect(px+8,py+22,2,5);ctx.fillRect(px+13,py+20,2,6);ctx.fillRect(px+18,py+23,2,4);ctx.fillStyle=['#f4d03f','#e8e8e8','#e07aa0'][h%3];ctx.fillRect(px+12,py+19,3,3)}
+      }
+    }
+    if(t.t>1){for(const [dx,dy,ex,ey,ew,eh] of [[0,-1,0,0,T,3],[0,1,0,T-3,T,3],[-1,0,0,0,3,T],[1,0,T-3,0,3,T]]){const nx=x+dx,ny=y+dy;if(inb(nx,ny)&&S.tiles[idx(nx,ny)].t<=1){ctx.fillStyle='rgba(60,40,10,.3)';ctx.fillRect(px+ex,py+ey,ew,eh);ctx.fillStyle='rgba(235,215,150,.35)';if(dx)ctx.fillRect(px+(dx<0?3:T-6),py,3,T);else ctx.fillRect(px,py+(dy<0?3:T-6),T,3)}}}
   }
+  for(const v of veg){if(v[0]===0)drawPalm(ctx,v[1],v[2],time,v[3]);else drawReeds(ctx,v[1],v[2],time,v[3])}
   // seasons
   const sn=seasonIdx();
   if(!floodM||floodSeed!==S.seed){floodSeed=S.seed;floodM=new Uint8Array(W*H);for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(adjN(x,y,2,[1]))floodM[idx(x,y)]=1}
@@ -723,6 +788,9 @@ function draw(time){
     if(S.tiles[idx(Math.min(W-1,Math.max(0,Math.round(xx))),Math.min(H-1,Math.floor(yy)))].t>1)continue;
     ctx.fillStyle='#7b4a22';ctx.beginPath();ctx.moveTo(xx*T+T/2-9,yy*T+T/2+3);ctx.lineTo(xx*T+T/2+9,yy*T+T/2+3);ctx.lineTo(xx*T+T/2+6,yy*T+T/2+8);ctx.lineTo(xx*T+T/2-6,yy*T+T/2+8);ctx.fill();ctx.fillStyle='#f5efe0';ctx.beginPath();ctx.moveTo(xx*T+T/2,yy*T+T/2-9);ctx.lineTo(xx*T+T/2+8,yy*T+T/2+2);ctx.lineTo(xx*T+T/2,yy*T+T/2+2);ctx.fill();
   }
+  {const home=(()=>{for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(S.tiles[idx(x,y)].b==='barracks')return [x,y];return [S.cx,S.cy]})();
+   const list=[];for(const u of ['guard','chariot','archer','spear'])for(let i=0;i<Math.min(S.army[u]||0,5);i++)list.push(u);
+   list.slice(0,14).forEach((u,i)=>{const row=Math.floor(i/5),col=i%5;const px=(home[0]+.5)*T+(col-2)*13+Math.sin(time/1400+i)*5,py=(home[1]+1.15)*T+row*12;drawSoldier(ctx,u,px,py,time,i)})}
   const bl=[];for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const t=S.tiles[idx(x,y)];if(t.b&&t.b!=='wall')bl.push([x,y])}
   const nv=Math.min(bl.length,Math.floor(S.pop/6));
   for(let i=0;i<nv;i++){
@@ -810,7 +878,7 @@ function init(){
   if(!S.seenIntro){S.seenIntro=true;showTut(0)}
   requestAnimationFrame(loop);
 }
-window.__civ={get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
+window.__civ={get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,doEnvoy,doDeal,doPact,doSpy,doAlly,doGift,doTribute,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
 init();
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.speed>0){S._rs=S.speed;S.speed=0}else if(!document.hidden&&S._rs){S.speed=S._rs;S._rs=0}});
 </script>
