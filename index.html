@@ -50,7 +50,7 @@ html,body{margin:0;height:100%;background:#1b1410;color:#f5e6c8;font-family:"Seg
 window.__errors=[];
 window.addEventListener('error',e=>window.__errors.push(String(e.message)));
 const W=44,H=44,T=34;
-const SAVE='nile-civ-v11';
+const SAVE='nile-civ-v12';
 // ---------- seeded random ----------
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let rnd=Math.random;
@@ -543,7 +543,8 @@ function slotInfo(i){const v=localStorage.getItem(slotKey(i));if(!v)return 'فا
 const $=s=>document.querySelector(s);
 const top$=$('#top'),panel=$('#panel'),tabs=$('#tabs'),cv=$('#cv'),ctx=cv.getContext('2d');
 let tab=null,sel=null,selTile=null;
-function toast(m){if(/❌|⚠️/.test(m))sfx('bad');const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>t.style.display='none',2600)}
+function buzz(n){try{navigator.vibrate&&navigator.vibrate(n)}catch(_){}}
+function toast(m){buzz(/❌|⚠️/.test(m)?[30,40,30]:12);if(/❌|⚠️/.test(m))sfx('bad');const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>t.style.display='none',2600)}
 function showModal(h){$('#mbox').innerHTML=h;$('#modal').style.display='flex'}
 function closeModal(){$('#modal').style.display='none'}
 const TABS=[['build','🏗️ بناء'],['tech','🔬 أبحاث'],['army','⚔️ جيش'],['trade','🌍 جيران'],['pol','👑 حكم'],['log','📜 سجل'],['menu','⚙️']];
@@ -781,6 +782,7 @@ function init(){
 }
 window.__civ={get S(){return S},tick,doBuild,doTrain,doResearch,doCaravan,doAttack,newGame,rates,housing,defense,canPlace,save,load,renderAll,setTab(t){tab=t;renderPanel()},setSel(b){sel=b;renderPanel()}};
 init();
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.speed>0){S._rs=S.speed;S.speed=0}else if(!document.hidden&&S._rs){S.speed=S._rs;S._rs=0}});
 </script>
 </body>
 </html>
