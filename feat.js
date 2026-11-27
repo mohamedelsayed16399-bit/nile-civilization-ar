@@ -37,3 +37,19 @@ function showDist(){
 window.__dist={links,bonus,showDist,RULES};
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-m="dist"]');if(b){e.stopPropagation();showDist()}},true);
 })();
+// Round 61: wonders gallery with glory bonus
+(function(){
+function wonders(){return Object.keys(BUILD).filter(k=>BUILD[k].unique)}
+function built(k){const S=__civ.S;return k==='pyramid'?(S.pyr||0)>=12||S.tiles.some(t=>t.b==='pyramid'):S.tiles.some(t=>t.b===k)}
+function glory(){const w=wonders();const n=w.filter(built).length;return {n,total:w.length,cul:n*.8+(n===w.length?4:0),gold:n*.3,all:n===w.length}}
+const _r=rates;
+rates=function(){const r=_r();try{const g=glory();r.cul+=g.cul;r.gold+=g.gold}catch(e){}return r};
+function showWonders(){
+ const g=glory();
+ showModal('<h2>🏛️ معرض العجائب</h2><div class="small">كل عجيبة تبنيها تعطي مجداً: +0.8 ثقافة و+0.3 ذهب. وعند اكتمال كل العجائب: +4 ثقافة إضافية.</div><div class="card"><b>المجد: '+g.n+'/'+g.total+'</b> <span class="small">+'+g.cul.toFixed(1)+' ثقافة، +'+g.gold.toFixed(1)+' ذهب'+(g.all?' 👑 عجائب مكتملة':'')+'</span><div style="background:#3a2a1a;border-radius:6px;height:10px"><div style="background:#e8c13d;height:10px;border-radius:6px;width:'+Math.round(g.n/g.total*100)+'%"></div></div></div>'+
+  wonders().map(k=>{const d=BUILD[k],b=built(k);return '<div class="card" style="'+(b?'border-color:#e8c13d':'opacity:.8')+'"><b>'+d.i+' '+d.n+'</b> '+(b?'✅ مبنية':'⬜')+'<div class="small">'+d.d+'</div>'+(b?'':'<div class="small">التكلفة: '+costStr(d.cost)+(d.need.length?' | تحتاج: '+d.need.map(x=>TECH[x].n).join(' + '):'')+'</div>')+'</div>'}).join('')+
+  '<button onclick="closeModal()">إغلاق</button>');
+}
+window.__won={glory,showWonders,wonders,built};
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-m="won"]');if(b){e.stopPropagation();showWonders()}},true);
+})();
