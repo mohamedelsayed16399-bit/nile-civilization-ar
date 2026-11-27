@@ -110,3 +110,56 @@ function showWx(){const S=S_(),w=cur();ensureOv();
 window.__wx={WX,cur,roll,wTick,showWx,force(id){S_().wxId=id;S_().wxUntil=S_().day+20}};
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-m="wx"]');if(b){e.stopPropagation();showWx()}},true);
 })();
+// Round 64: turn-based tactics battle
+(function(){
+const COLS=7,ROWS=5;
+const UT={sp:{n:'حامل رمح',i:'🛡️',hp:10,atk:4,rng:1,mov:2},ar:{n:'رامٍ',i:'🏹',hp:6,atk:3,rng:3,mov:2},ch:{n:'عربة حربية',i:'🐎',hp:8,atk:5,rng:1,mov:4}};
+let TB=null;const S_=()=>__civ.S;
+const dist=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
+function ready(){const S=S_();return S.day-(S.tbAt===undefined?-99:S.tbAt)>=25}
+function mk(t,x,y,side,bonus){const u=UT[t];return {t,x,y,side,hp:u.hp+(side==='e'?bonus:0),done:false}}
+function start(form){
+ const S=S_();if(!ready()){toast('⚠️ لا معركة قبل مرور 25 يوماً');return false}
+ const bonus=Math.min(3,Math.floor(S.day/200));
+ const ek=['sp','ar','ch'];const n=S.day>300?4:3;
+ TB={us:[],en:[],sel:null,msg:'اختر وحدة',turn:1,over:null,bonus};
+ const rows=n===4?[0,1,3,4]:[1,2,3];
+ (form||['sp','ar','ch','sp']).slice(0,n).forEach((t,i)=>TB.us.push(mk(t,0,rows[i],'p',0)));
+ for(let i=0;i<n;i++)TB.en.push(mk(ek[i%3],6,rows[i],'e',bonus));
+ S.tbAt=S.day;render();return true}
+function at(x,y){return TB.us.concat(TB.en).find(u=>u.hp>0&&u.x===x&&u.y===y)}
+function moves(u){const r=[];for(let x=0;x<COLS;x++)for(let y=0;y<ROWS;y++){if(!at(x,y)&&Math.abs(x-u.x)+Math.abs(y-u.y)<=UT[u.t].mov)r.push([x,y])}return r}
+function dmg(a,d){let v=UT[a.t].atk;if(a.t==='ch'&&d.t==='ar')v+=2;if(a.t==='sp'&&d.t==='ch')v+=2;if(a.t==='ar'&&d.t==='sp')v+=1;return v}
+function hit(a,d){const v=dmg(a,d);d.hp-=v;a.done=true;return v}
+function check(){if(!TB.en.some(u=>u.hp>0)){TB.over='win'}else if(!TB.us.some(u=>u.hp>0)){TB.over='lose'}
+ if(TB.over){const S=S_();if(TB.over==='win'){const g=30+TB.us.filter(u=>u.hp>0).length*8;S.res.gold+=g;S.culture=(S.culture||0);try{S.res.culture=(S.res.culture||0)+0}catch(e){}S.tbWins=(S.tbWins||0)+1;try{addLog('⚔️ انتصار تكتيكي: +'+g+' ذهب')}catch(e){};TB.msg='🏆 انتصرت! +'+g+' ذهب'}else{S.res.gold=Math.max(0,S.res.gold-25);try{addLog('⚔️ خسارة معركة تكتيكية')}catch(e){};TB.msg='💀 هُزمت (-25 ذهب)'}}}
+function click(x,y){
+ if(!TB||TB.over)return;const u=at(x,y);
+ if(u&&u.side==='p'&&!u.done){TB.sel=u;TB.msg='اختر مكاناً أو عدواً';render();return}
+ const s=TB.sel;if(!s||s.hp<=0){return}
+ if(u&&u.side==='e'){if(dist(s,u)<=UT[s.t].rng){const v=hit(s,u);TB.msg=UT[s.t].i+' ضرب '+v;TB.sel=null;check();render()}else{TB.msg='بعيد عن المدى';render()}return}
+ if(!u&&!s.moved&&Math.abs(x-s.x)+Math.abs(y-s.y)<=UT[s.t].mov){s.x=x;s.y=y;s.moved=true;TB.msg='تحرك. اضرب أو أنهِ الدور';render();return}
+}
+function endTurn(){
+ if(!TB||TB.over)return;
+ for(const e of TB.en.filter(u=>u.hp>0)){
+  const tg=TB.us.filter(u=>u.hp>0).sort((a,b)=>dist(e,a)-dist(e,b)||a.hp-b.hp)[0];if(!tg)break;
+  if(dist(e,tg)>UT[e.t].rng){const m=moves(e).sort((a,b)=>(Math.abs(a[0]-tg.x)+Math.abs(a[1]-tg.y))-(Math.abs(b[0]-tg.x)+Math.abs(b[1]-tg.y)));
+   const want=UT[e.t].rng;let best=m.find(p=>Math.abs(p[0]-tg.x)+Math.abs(p[1]-tg.y)<=want)||m[0];if(best){e.x=best[0];e.y=best[1]}}
+  if(dist(e,tg)<=UT[e.t].rng)hit(e,tg)}
+ TB.us.forEach(u=>{u.done=false;u.moved=false});TB.sel=null;TB.turn++;TB.msg='دور '+TB.turn;check();render()}
+function render(){
+ if(!TB){showModal('<h2>⚔️ معركة تكتيكية</h2><div class="small">3 وحدات ضد جيش العدو على رقعة 7×5. حرّك ثم اضرب. الرامي يضرب من بعيد، العربة تتفوق على الرماة، والرمح يتفوق على العربات. النصر يمنحك ذهباً.</div><button onclick="__tb.start()">'+(ready()?'ابدأ المعركة':'⏳ غير متاح الآن')+'</button><button onclick="closeModal()">إغلاق</button>');return}
+ let g='<div style="direction:ltr;display:grid;grid-template-columns:repeat('+COLS+',minmax(0,1fr));width:100%;box-sizing:border-box;gap:3px">';
+ for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const u=at(x,y);const s=TB.sel;let bg='#5a4a2a';
+  if(s&&!u&&!s.moved&&Math.abs(x-s.x)+Math.abs(y-s.y)<=UT[s.t].mov)bg='#7a6a3a';
+  if(s&&u&&u.side==='e'&&dist(s,u)<=UT[s.t].rng)bg='#a33';
+  if(u&&u===s)bg='#2d7';
+  g+='<div onclick="__tb.click('+x+','+y+')" style="aspect-ratio:1;min-width:0;overflow:hidden;background:'+bg+';border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:20px;border:2px solid '+(u?(u.side==='p'?'#4ac':'#c44'):'#3a2a1a')+'">'+(u?UT[u.t].i+'<span style="font-size:11px">'+u.hp+(u.done&&u.side==='p'?'✔':'')+'</span>':'')+'</div>'}
+ g+='</div>';
+ showModal('<h2>⚔️ معركة تكتيكية</h2>'+g+'<div class="small" style="margin:6px 0">'+TB.msg+'</div>'+(TB.over?'<button onclick="__tb.close()">إنهاء</button>':'<button onclick="__tb.end()">إنهاء الدور</button><button onclick="__tb.close()">انسحاب</button>'));
+}
+function close(){TB=null;closeModal()}
+window.__tb={start,click,end:endTurn,close,render,get TB(){return TB},UT,ready,moves,show(){TB=null;render()}};
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-m="tact"]');if(b){e.stopPropagation();window.__tb.show()}},true);
+})();
