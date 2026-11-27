@@ -120,7 +120,7 @@ function ready(){const S=S_();return S.day-(S.tbAt===undefined?-99:S.tbAt)>=25}
 function mk(t,x,y,side,bonus){const u=UT[t];return {t,x,y,side,hp:u.hp+(side==='e'?bonus:0),done:false}}
 function start(form){
  const S=S_();if(!ready()){toast('⚠️ لا معركة قبل مرور 25 يوماً');return false}
- const bonus=Math.min(3,Math.floor(S.day/200))+Math.min(2,S.tbStreak||0);
+ const bonus=Math.min(2,Math.floor(S.day/250))+Math.min(1,S.tbStreak||0)+Math.floor(Math.min(4,S.tcLv||0)/2);
  const ek=['sp','ar','ch'];const n=S.day>300?4:3;
  let sd=(S.seed||5)*7+S.day*13;const rn=()=>{sd=(sd*9301+49297)%233280;return sd/233280};const rock={};for(let k=0;k<4;k++){rock[(1+Math.floor(rn()*5))+','+Math.floor(rn()*ROWS)]=1}
  TB={rock,us:[],en:[],sel:null,msg:'اختر وحدة',turn:1,over:null,bonus};
@@ -133,7 +133,7 @@ function moves(u){const r=[];for(let x=0;x<COLS;x++)for(let y=0;y<ROWS;y++){if(!
 function dmg(a,d){let v=UT[a.t].atk;if(a.t==='ch'&&d.t==='ar')v+=2;if(a.t==='sp'&&d.t==='ch')v+=2;if(a.t==='ar'&&d.t==='sp')v+=1;return v}
 function hit(a,d){const v=dmg(a,d);d.hp-=v;a.done=true;return v}
 function check(){if(!TB.en.some(u=>u.hp>0)){TB.over='win'}else if(!TB.us.some(u=>u.hp>0)){TB.over='lose'}
- if(TB.over){const S=S_();if(TB.over==='win'){const st=S.tbStreak||0;const g=30+TB.us.filter(u=>u.hp>0).length*8+Math.min(20,st*5);S.tbStreak=st+1;S.res.gold+=g;S.culture=(S.culture||0);try{S.res.culture=(S.res.culture||0)+0}catch(e){}S.tbWins=(S.tbWins||0)+1;try{addLog('⚔️ انتصار تكتيكي: +'+g+' ذهب')}catch(e){};TB.msg='🏆 انتصرت! +'+g+' ذهب'}else{S.tbStreak=0;S.res.gold=Math.max(0,S.res.gold-25);try{addLog('⚔️ خسارة معركة تكتيكية')}catch(e){};TB.msg='💀 هُزمت (-25 ذهب)'}}}
+ if(TB.over){const S=S_();if(TB.over==='win'){const st=S.tbStreak||0;const g=30+TB.us.filter(u=>u.hp>0).length*8+Math.min(20,st*5);S.tbStreak=st+1;S.res.gold+=g;S.culture=(S.culture||0);try{S.res.culture=(S.res.culture||0)+0}catch(e){}S.tbWins=(S.tbWins||0)+1;S.tcLv=(S.tcLv||0)+1;if(S.tcLv>=5){S.tcLv=0;S.tcDone=(S.tcDone||0)+1;S.res.gold+=150;try{addLog('🏆 أكملت الحملة التكتيكية: +150 ذهب')}catch(e){}}try{addLog('⚔️ انتصار تكتيكي: +'+g+' ذهب')}catch(e){};TB.msg='🏆 انتصرت! +'+g+' ذهب'}else{S.tbStreak=0;S.tcLv=Math.max(0,(S.tcLv||0)-1);S.res.gold=Math.max(0,S.res.gold-25);try{addLog('⚔️ خسارة معركة تكتيكية')}catch(e){};TB.msg='💀 هُزمت (-25 ذهب)'}}}
 function click(x,y){
  if(!TB||TB.over)return;const u=at(x,y);
  if(u&&u.side==='p'&&!u.done){TB.sel=u;TB.msg='اختر مكاناً أو عدواً';render();return}
@@ -150,7 +150,7 @@ function endTurn(){
   if(dist(e,tg)<=UT[e.t].rng)hit(e,tg)}
  TB.us.forEach(u=>{u.done=false;u.moved=false});TB.sel=null;TB.turn++;TB.msg='دور '+TB.turn;check();render()}
 function render(){
- if(!TB){showModal('<h2>⚔️ معركة تكتيكية</h2><div class="small">3 وحدات ضد جيش العدو على رقعة 7×5. حرّك ثم اضرب. الرامي يضرب من بعيد، العربة تتفوق على الرماة، والرمح يتفوق على العربات. النصر يمنحك ذهباً.</div><button onclick="__tb.start()">'+(ready()?'ابدأ المعركة':'⏳ غير متاح الآن')+'</button><button onclick="closeModal()">إغلاق</button>');return}
+ const S=S_();if(!TB){showModal('<h2>⚔️ معركة تكتيكية</h2><div class="small">3 وحدات ضد جيش العدو على رقعة 7×5. حرّك ثم اضرب. الرامي يضرب من بعيد، العربة تتفوق على الرماة، والرمح يتفوق على العربات. النصر يمنحك ذهباً.</div><div class="card"><b>🗺️ الحملة: المعركة '+(((S.tcLv||0)+1))+' من 5</b><div class="small">كل فوز يقوّي العدو التالي. أكمل 5 انتصارات للحصول على 150 ذهب. الخسارة ترجعك مرحلة.</div></div><button onclick="__tb.start()">'+(ready()?'ابدأ المعركة':'⏳ غير متاح الآن')+'</button><button onclick="closeModal()">إغلاق</button>');return}
  let g='<div style="direction:ltr;display:grid;grid-template-columns:repeat('+COLS+',minmax(0,1fr));width:100%;box-sizing:border-box;gap:3px">';
  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const u=at(x,y);const s=TB.sel;let bg=TB.rock[x+','+y]?'#2a2a2a':'#5a4a2a';
   if(s&&!u&&!s.moved&&Math.abs(x-s.x)+Math.abs(y-s.y)<=UT[s.t].mov)bg='#7a6a3a';
@@ -201,6 +201,7 @@ const add=[
  {id:'n64',t:'⚔️ قائد ميدان',d:'3 انتصارات تكتيكية',c:()=>(__civ.S.tbWins||0)>=3,r:20},
  {id:'n64b',t:'🔥 سلسلة نصر',d:'3 انتصارات متتالية',c:()=>(__civ.S.tbStreak||0)>=3,r:25},
  {id:'n66',t:'🛡️ حارس القوافل',d:'أمّن قافلة من الغارات',c:()=>{const g=__civ.S.guard||{};return Object.keys(g).length>0},r:15},
+ {id:'n68',t:'🗺️ فاتح الحملة',d:'أكمل الحملة التكتيكية',c:()=>(__civ.S.tcDone||0)>=1,r:35},
  {id:'n59',t:'📜 الحاكم الحكيم',d:'أصدر مرسوماً ملكياً',c:()=>(__civ.S.decN||0)>=1,r:10}
 ];
 add.forEach(a=>{if(!ACH.find(x=>x.id===a.id))ACH.push(a)});
