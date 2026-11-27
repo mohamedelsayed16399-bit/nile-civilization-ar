@@ -207,3 +207,16 @@ const add=[
 add.forEach(a=>{if(!ACH.find(x=>x.id===a.id))ACH.push(a)});
 window.__ach67={add};
 })();
+// Round 69: chronicle (timeline of events + counters)
+(function(){
+const S_=()=>__civ.S;
+function sev(m){return /غارة|نُهبت|هُزمت|خسارة|وباء|ثورة|خماسين/.test(m)?'#c44':/انتصار|إنجاز|أكملت|هزمت القطاع|حرس/.test(m)?'#e8c13d':'#6a8'}
+function show(){
+ const S=S_(),L=(S.log||[]).slice(0,40);
+ const stats=[['⚔️ انتصارات تكتيكية',S.tbWins||0],['🗺️ حملات مكتملة',S.tcDone||0],['📜 مراسيم',S.decN||0],['🏅 إنجازات',Object.keys(S.ach||{}).length],['📅 الأيام',S.day]];
+ const rows=L.length?L.map(m=>'<div style="border-right:4px solid '+sev(m)+';padding:4px 8px;margin:3px 0;background:#2a1f12;border-radius:6px;text-align:right">'+m+'</div>').join(''):'<div class="small">لا أحداث بعد.</div>';
+ showModal('<h2>📖 سجل الأحداث</h2><div style="display:flex;flex-wrap:wrap;gap:4px">'+stats.map(s=>'<div class="card" style="flex:1 1 30%;min-width:90px;text-align:center"><div class="small">'+s[0]+'</div><b>'+s[1]+'</b></div>').join('')+'</div><div style="max-height:45vh;overflow:auto;margin-top:6px">'+rows+'</div><div class="small">الأحمر: خطر | الذهبي: إنجاز | الأخضر: عادي</div><button onclick="closeModal()">إغلاق</button>');
+}
+window.__chron={show,sev};
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-m="chron"]');if(b){e.stopPropagation();show()}},true);
+})();
