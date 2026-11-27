@@ -117,7 +117,9 @@ const UT={sp:{n:'حامل رمح',i:'🛡️',hp:10,atk:4,rng:1,mov:2},ar:{n:'ر
 let TB=null;const S_=()=>__civ.S;
 const dist=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
 function ready(){const S=S_();return S.day-(S.tbAt===undefined?-99:S.tbAt)>=25}
-function mk(t,x,y,side,bonus){const u=UT[t];return {t,x,y,side,hp:u.hp+(side==='e'?bonus:0),done:false}}
+function upLv(t){const S=S_();return (S.tbUp&&S.tbUp[t])||0}
+function mk(t,x,y,side,bonus){const u=UT[t];return {t,x,y,side,hp:u.hp+(side==='e'?bonus:upLv(t)*2),done:false}}
+function buyUp(t){const S=S_();S.tbUp=S.tbUp||{};const lv=upLv(t);if(lv>=3){toast('⚠️ أعلى مستوى');return}const c=60*(lv+1);if(S.res.gold<c){toast('⚠️ الذهب لا يكفي: '+c);return}S.res.gold-=c;S.tbUp[t]=lv+1;try{addLog('🔧 تطوير '+UT[t].n+' إلى المستوى '+(lv+1))}catch(e){}TB=null;render()}
 function start(form){
  const S=S_();if(!ready()){toast('⚠️ لا معركة قبل مرور 25 يوماً');return false}
  const bonus=Math.min(2,Math.floor(S.day/250))+Math.min(1,S.tbStreak||0)+Math.floor(Math.min(4,S.tcLv||0)/2);
@@ -150,7 +152,7 @@ function endTurn(){
   if(dist(e,tg)<=UT[e.t].rng)hit(e,tg)}
  TB.us.forEach(u=>{u.done=false;u.moved=false});TB.sel=null;TB.turn++;TB.msg='دور '+TB.turn;check();render()}
 function render(){
- const S=S_();if(!TB){showModal('<h2>⚔️ معركة تكتيكية</h2><div class="small">3 وحدات ضد جيش العدو على رقعة 7×5. حرّك ثم اضرب. الرامي يضرب من بعيد، العربة تتفوق على الرماة، والرمح يتفوق على العربات. النصر يمنحك ذهباً.</div><div class="card"><b>🗺️ الحملة: المعركة '+(((S.tcLv||0)+1))+' من 5</b><div class="small">كل فوز يقوّي العدو التالي. أكمل 5 انتصارات للحصول على 150 ذهب. الخسارة ترجعك مرحلة.</div></div><button onclick="__tb.start()">'+(ready()?'ابدأ المعركة':'⏳ غير متاح الآن')+'</button><button onclick="closeModal()">إغلاق</button>');return}
+ const S=S_();if(!TB){showModal('<h2>⚔️ معركة تكتيكية</h2><div class="small">3 وحدات ضد جيش العدو على رقعة 7×5. حرّك ثم اضرب. الرامي يضرب من بعيد، العربة تتفوق على الرماة، والرمح يتفوق على العربات. النصر يمنحك ذهباً.</div><div class="card"><b>🗺️ الحملة: المعركة '+(((S.tcLv||0)+1))+' من 5</b><div class="small">كل فوز يقوّي العدو التالي. أكمل 5 انتصارات للحصول على 150 ذهب. الخسارة ترجعك مرحلة.</div></div><div class="card"><b>🔧 تطوير الوحدات (+2 صحة لكل مستوى)</b>'+['sp','ar','ch'].map(t=>'<button onclick="__tb.buyUp(\''+t+'\')">'+UT[t].i+' '+UT[t].n+' م'+upLv(t)+'/3 - '+(upLv(t)>=3?'أقصى':60*(upLv(t)+1)+' ذهب')+'</button>').join('')+'</div><button onclick="__tb.start()">'+(ready()?'ابدأ المعركة':'⏳ غير متاح الآن')+'</button><button onclick="closeModal()">إغلاق</button>');return}
  let g='<div style="direction:ltr;display:grid;grid-template-columns:repeat('+COLS+',minmax(0,1fr));width:100%;box-sizing:border-box;gap:3px">';
  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const u=at(x,y);const s=TB.sel;let bg=TB.rock[x+','+y]?'#2a2a2a':'#5a4a2a';
   if(s&&!u&&!s.moved&&Math.abs(x-s.x)+Math.abs(y-s.y)<=UT[s.t].mov)bg='#7a6a3a';
@@ -161,7 +163,7 @@ function render(){
  showModal('<h2>⚔️ معركة تكتيكية</h2>'+g+'<div class="small" style="margin:6px 0">'+TB.msg+' | سلسلة الانتصارات: '+(S_().tbStreak||0)+'</div>'+(TB.over?'<button onclick="__tb.close()">إنهاء</button>':'<button onclick="__tb.end()">إنهاء الدور</button><button onclick="__tb.close()">انسحاب</button>'));
 }
 function close(){TB=null;closeModal()}
-window.__tb={start,click,end:endTurn,close,render,get TB(){return TB},UT,ready,moves,show(){TB=null;render()}};
+window.__tb={buyUp,upLv,start,click,end:endTurn,close,render,get TB(){return TB},UT,ready,moves,show(){TB=null;render()}};
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-m="tact"]');if(b){e.stopPropagation();window.__tb.show()}},true);
 })();
 // Round 66: desert raids on trade caravans
