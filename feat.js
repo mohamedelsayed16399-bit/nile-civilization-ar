@@ -81,3 +81,32 @@ function showPano(){
 window.__pano={showPano,panorama,era,cnt};
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-m="pano"]');if(b){e.stopPropagation();showPano()}},true);
 })();
+// Round 63: weather system with visible overlay
+(function(){
+const WX=[
+ {id:'clear',n:'صافٍ',i:'☀️',w:5,f:1,g:1,tint:'rgba(0,0,0,0)'},
+ {id:'heat',n:'موجة حر',i:'🔥',w:2,f:.93,g:1,tint:'rgba(255,120,30,.16)'},
+ {id:'rain',n:'مطر نادر',i:'🌧️',w:1,f:1.12,g:1,tint:'rgba(60,90,160,.2)'},
+ {id:'fog',n:'ضباب النيل',i:'🌫️',w:1,f:1,g:.95,tint:'rgba(220,220,230,.22)'},
+ {id:'breeze',n:'نسيم شمالي',i:'🍃',w:2,f:1.05,g:1.04,tint:'rgba(120,200,160,.08)'}
+];
+const S_=()=>__civ.S;
+function cur(){const S=S_();return WX.find(w=>w.id===(S.wxId||'clear'))||WX[0]}
+function roll(){const S=S_();let seed=(S.seed||5)*131+S.day*17;seed=(seed*9301+49297)%233280;let r=seed/233280*WX.reduce((a,w)=>a+w.w,0);for(const w of WX){r-=w.w;if(r<0)return w}return WX[0]}
+let lastDay=-1,ov=null,cv=null,parts=[];
+function ensureOv(){if(ov)return;ov=document.createElement('div');ov.style.cssText='position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:5;transition:background 1.5s';cv=document.createElement('canvas');cv.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%';ov.appendChild(cv);document.body.appendChild(ov);
+ const loop=()=>{try{draw()}catch(e){}requestAnimationFrame(loop)};loop()}
+function draw(){const w=cur();cv.width=cv.clientWidth||300;cv.height=cv.clientHeight||300;const c=cv.getContext('2d');c.clearRect(0,0,cv.width,cv.height);
+ if(w.id==='rain'){c.strokeStyle='rgba(180,200,255,.6)';c.lineWidth=1;while(parts.length<90)parts.push({x:Math.random()*cv.width,y:Math.random()*cv.height});parts.forEach(p=>{c.beginPath();c.moveTo(p.x,p.y);c.lineTo(p.x-3,p.y+12);c.stroke();p.y+=14;p.x-=2;if(p.y>cv.height){p.y=-10;p.x=Math.random()*cv.width}})}
+ else if(w.id==='breeze'){c.fillStyle='rgba(255,255,255,.45)';while(parts.length<14)parts.push({x:Math.random()*cv.width,y:Math.random()*cv.height});parts.forEach(p=>{c.fillRect(p.x,p.y,10,1.5);p.x+=3;if(p.x>cv.width){p.x=-10;p.y=Math.random()*cv.height}})}
+ else parts=[];
+ ov.style.background=w.tint}
+function wTick(){const S=S_();if(S.day===lastDay)return;lastDay=S.day;ensureOv();
+ if(!S.wxUntil||S.day>=S.wxUntil){const p=cur(),n=S.day<3?WX[0]:roll();S.wxId=n.id;S.wxUntil=S.day+6+((S.day*7)%7);if(n.id!==p.id&&n.id!=='clear'){try{toast(n.i+' '+n.n);addLog(n.i+' طقس: '+n.n)}catch(e){}}}}
+const _tick=tick;tick=function(){const r=_tick.apply(this,arguments);try{wTick()}catch(e){}return r};
+const _rates=rates;rates=function(){const r=_rates();try{const w=cur();if(r.food>0)r.food*=w.f;r.gold*=w.g}catch(e){}return r};
+function showWx(){const S=S_(),w=cur();ensureOv();
+ showModal('<h2>'+w.i+' الطقس: '+w.n+'</h2><div class="card"><div class="small">يتغير الطقس كل أسبوع تقريباً. ينتهي الحالي في اليوم '+(S.wxUntil||'?')+'.</div></div>'+WX.map(x=>'<div class="card"'+(x.id===w.id?' style="border-color:#e8c13d"':'')+'><b>'+x.i+' '+x.n+'</b><div class="small">'+(x.f!==1?'الغذاء '+(x.f>1?'+':'')+Math.round((x.f-1)*100)+'% ':'')+(x.g!==1?'الذهب '+(x.g>1?'+':'')+Math.round((x.g-1)*100)+'%':'')+(x.f===1&&x.g===1?'بلا تأثير':'')+'</div></div>').join('')+'<button onclick="closeModal()">إغلاق</button>')}
+window.__wx={WX,cur,roll,wTick,showWx,force(id){S_().wxId=id;S_().wxUntil=S_().day+20}};
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-m="wx"]');if(b){e.stopPropagation();showWx()}},true);
+})();
