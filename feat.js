@@ -300,3 +300,14 @@ function check(){const S=__civ.S;if(!S)return null;S.hintN=S.hintN||0;const h=H[
  try{S.log.unshift('يوم '+S.day+': '+h[1])}catch(e){}return h[1]}
 setInterval(()=>{try{check()}catch(e){}},3000);window.__hint={check,H};
 })();
+;(function(){/* R79 civilization score */
+const RK=[[0,'🛖 قرية على الضفة'],[300,'🌾 مدينة زراعية'],[800,'🏛️ مملكة'],[1600,'⚔️ دولة قوية'],[2800,'👑 إمبراطورية'],[4500,'🌟 حضارة خالدة']];
+function parts(){const S=__civ.S,r=S.res||{};
+ return [['👥 السكان',Math.floor((S.pop||S.people||0)*1)],['📅 الأيام',Math.floor(S.day/2)],['🔬 التقنيات',Object.keys(S.techs||{}).length*15],['🏅 الإنجازات',Object.keys(S.ach||{}).length*12],['⚔️ انتصارات',(S.tbWins||0)*8+(S.tcDone||0)*40],['📜 مراسيم',(S.decN||0)*3],['🎭 ثقافة',Math.floor(Math.min(1500,r.culture||0)/10)],['🌊 الفيضان',(S.flW||0)*5+(S.hevN||0)*3]]}
+function score(){return parts().reduce((a,p)=>a+(isFinite(p[1])?p[1]:0),0)}
+function rank(s){let k=RK[0];for(const x of RK)if(s>=x[0])k=x;return k[1]}
+function show(){const s=score(),n=RK.find(x=>x[0]>s);const S=__civ.S;S.bestScore=Math.max(S.bestScore||0,s);
+ showModal('<h2>🏆 تقييم الحضارة</h2><div class="card" style="text-align:center"><div style="font-size:30px"><b>'+s+'</b> نقطة</div><div>'+rank(s)+'</div><div class="small">'+(n?'التالي: '+n[1]+' عند '+n[0]:'وصلت لأعلى رتبة')+' | أفضل رقم: '+S.bestScore+'</div></div>'+parts().map(p=>'<div class="card" style="display:flex;justify-content:space-between"><span>'+p[0]+'</span><b>'+p[1]+'</b></div>').join('')+'<button onclick="closeModal()">إغلاق</button>')}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-m="score"]');if(b){e.stopPropagation();show()}},true);
+window.__score={score,rank,show,parts};
+})();
