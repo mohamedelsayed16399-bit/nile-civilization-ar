@@ -222,3 +222,16 @@ function show(){
 window.__chron={show,sev};
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-m="chron"]');if(b){e.stopPropagation();show()}},true);
 })();
+;(function(){/* R71 era tint */
+const E=[[0,'🛖 عصر القرية','rgba(120,90,40,0)'],[4,'🌾 عصر الزراعة','rgba(90,140,60,.07)'],[9,'🏛️ العصر الفرعوني','rgba(220,170,40,.08)'],[15,'⚔️ عصر الإمبراطورية','rgba(180,50,40,.08)'],[22,'👑 العصر الذهبي','rgba(255,215,90,.12)']];
+let d=document.getElementById('eraTint');
+if(!d){d=document.createElement('div');d.id='eraTint';d.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:1;transition:background 2s';document.body.appendChild(d);}
+function era(){const S=window.__civ&&__civ.S;const n=S&&S.techs?Object.keys(S.techs).length:0;let e=E[0];for(const x of E)if(n>=x[0])e=x;return e}
+function upd(){try{const e=era();d.style.background='radial-gradient(ellipse at center,transparent 40%,'+e[2]+' 100%)';d.title=e[1];window.__era=e[1]}catch(x){}}
+upd();setInterval(upd,3000);window.__eraTint={era,upd};
+})();
+;(function(){/* R72 era change announcement */
+let last=null;
+setInterval(()=>{try{const e=__eraTint.era()[1];if(last&&e!==last){const t=document.getElementById('toast');if(t){t.textContent='🌅 دخلت '+e;t.style.opacity=1;t.style.display='block';setTimeout(()=>{t.style.opacity=''},3500)}
+const S=__civ.S;if(S.log)S.log.unshift('🌅 بداية '+e)}last=e}catch(x){}},3000);
+})();
