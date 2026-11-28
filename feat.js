@@ -268,3 +268,10 @@ document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest
  const b=e.target.closest&&e.target.closest('[data-sp]');if(b){e.stopPropagation();const r=go(b.dataset.sp);show(!r?'':r.err?'⚠️ ذهب غير كاف':r.win?'✅ نجحت المهمة':'❌ قُبض على الجاسوس')}},true);
 window.__spy={go,show,cd};
 })();
+;(function(){/* R75 haptics */
+function vib(p){try{if(S_muted())return;navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
+function S_muted(){try{return typeof muted!=='undefined'&&muted}catch(e){return false}}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-fl],[data-sp],[data-tb],[data-m]');if(!t)return;
+ setTimeout(()=>{const m=(document.querySelector('#mbox')||{}).innerText||'';if(t.dataset.fl||t.dataset.sp){vib(/✅/.test(m)?[40,30,40]:/❌/.test(m)?[120]:10)}else vib(8)},60)},true);
+window.__haptic={vib};
+})();
