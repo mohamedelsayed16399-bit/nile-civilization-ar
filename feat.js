@@ -292,3 +292,11 @@ function check(force){const S=__civ.S;if(!S||(S.day<30&&!force))return;const slo
 setInterval(()=>{try{check()}catch(e){}},2500);
 window.__hev={check,EV};
 })();
+;(function(){/* R77 tutorial hints */
+const H=[[12,'💡 افتح القائمة: 🌊 فيضان النيل يعطيك طعاماً كل 20 يوماً'],[20,'💡 القائمة فيها 🕵️ الجواسيس لسرقة الذهب أو حماية القوافل'],[28,'💡 جرّب ⚔️ المعركة التكتيكية وطوّر وحداتك بالذهب'],[40,'💡 📖 سجل الأحداث يلخص كل ما حدث في مدينتك']];
+function check(){const S=__civ.S;if(!S)return null;S.hintN=S.hintN||0;const h=H[S.hintN];if(!h||S.day<h[0])return null;
+ const md=document.querySelector('#modal');if(md&&md.style.display==='flex')return null;S.hintN++;
+ const t=document.getElementById('toast');if(t){t.textContent=h[1];t.style.opacity=1;t.style.display='block';setTimeout(()=>{t.style.opacity=''},5000)}
+ try{S.log.unshift('يوم '+S.day+': '+h[1])}catch(e){}return h[1]}
+setInterval(()=>{try{check()}catch(e){}},3000);window.__hint={check,H};
+})();
