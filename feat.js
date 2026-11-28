@@ -132,7 +132,7 @@ function start(form){
  S.tbAt=S.day;render();return true}
 function at(x,y){return TB.us.concat(TB.en).find(u=>u.hp>0&&u.x===x&&u.y===y)}
 function moves(u){const r=[];for(let x=0;x<COLS;x++)for(let y=0;y<ROWS;y++){if(!at(x,y)&&!TB.rock[x+','+y]&&Math.abs(x-u.x)+Math.abs(y-u.y)<=UT[u.t].mov)r.push([x,y])}return r}
-function dmg(a,d){let v=UT[a.t].atk;if(a.t==='ch'&&d.t==='ar')v+=2;if(a.t==='sp'&&d.t==='ch')v+=2;if(a.t==='ar'&&d.t==='sp')v+=1;return v}
+function dmg(a,d){let v=UT[a.t].atk;if(a.t==='ch'&&d.t==='ar')v+=2;if(a.t==='sp'&&d.t==='ch')v+=2;if(a.t==='ar'&&d.t==='sp')v+=1;try{const al=(a.side==='p'?TB.us:TB.en);if(al.some(o=>o!==a&&o.hp>0&&dist(o,d)===1))v+=1}catch(e){}return v}
 function hit(a,d){const v=dmg(a,d);d.hp-=v;a.done=true;return v}
 function check(){if(!TB.en.some(u=>u.hp>0)){TB.over='win'}else if(!TB.us.some(u=>u.hp>0)){TB.over='lose'}
  if(TB.over){const S=S_();if(TB.over==='win'){const st=S.tbStreak||0;const g=30+TB.us.filter(u=>u.hp>0).length*8+Math.min(20,st*5);S.tbStreak=st+1;S.res.gold+=g;S.culture=(S.culture||0);try{S.res.culture=(S.res.culture||0)+0}catch(e){}S.tbWins=(S.tbWins||0)+1;S.tcLv=(S.tcLv||0)+1;if(S.tcLv>=5){S.tcLv=0;S.tcDone=(S.tcDone||0)+1;S.res.gold+=150;try{addLog('🏆 أكملت الحملة التكتيكية: +150 ذهب')}catch(e){}}try{addLog('⚔️ انتصار تكتيكي: +'+g+' ذهب')}catch(e){};TB.msg='🏆 انتصرت! +'+g+' ذهب'}else{S.tbStreak=0;S.tcLv=Math.max(0,(S.tcLv||0)-1);S.res.gold=Math.max(0,S.res.gold-25);try{addLog('⚔️ خسارة معركة تكتيكية')}catch(e){};TB.msg='💀 هُزمت (-25 ذهب)'}}}
@@ -141,7 +141,7 @@ function click(x,y){
  if(u&&u.side==='p'&&!u.done){TB.sel=u;TB.msg='اختر مكاناً أو عدواً';render();return}
  const s=TB.sel;if(!s||s.hp<=0){return}
  if(u&&u.side==='e'){if(dist(s,u)<=UT[s.t].rng){const v=hit(s,u);TB.msg=UT[s.t].i+' ضرب '+v;TB.sel=null;check();render()}else{TB.msg='بعيد عن المدى';render()}return}
- if(!u&&!TB.rock[x+','+y]&&!s.moved&&Math.abs(x-s.x)+Math.abs(y-s.y)<=UT[s.t].mov){s.x=x;s.y=y;s.moved=true;TB.msg='تحرك. اضرب أو أنهِ الدور';render();return}
+ if(!u&&!TB.rock[x+','+y]&&!s.moved&&Math.abs(x-s.x)+Math.abs(y-s.y)<=UT[s.t].mov){s.md=Math.abs(x-s.x)+Math.abs(y-s.y);s.x=x;s.y=y;s.moved=true;TB.msg='تحرك. اضرب أو أنهِ الدور';render();return}
 }
 function endTurn(){
  if(!TB||TB.over)return;
@@ -150,9 +150,9 @@ function endTurn(){
   if(dist(e,tg)>UT[e.t].rng){const m=moves(e).sort((a,b)=>(Math.abs(a[0]-tg.x)+Math.abs(a[1]-tg.y))-(Math.abs(b[0]-tg.x)+Math.abs(b[1]-tg.y)));
    const want=UT[e.t].rng;let best=m.find(p=>Math.abs(p[0]-tg.x)+Math.abs(p[1]-tg.y)<=want)||m[0];if(best){e.x=best[0];e.y=best[1]}}
   if(dist(e,tg)<=UT[e.t].rng)hit(e,tg)}
- TB.us.forEach(u=>{u.done=false;u.moved=false});TB.sel=null;TB.turn++;TB.msg='دور '+TB.turn;check();render()}
+ TB.us.forEach(u=>{u.done=false;u.moved=false;u.md=0});TB.sel=null;TB.turn++;TB.msg='دور '+TB.turn;check();render()}
 function render(){
- const S=S_();if(!TB){showModal('<h2>⚔️ معركة تكتيكية</h2><div class="small">3 وحدات ضد جيش العدو على رقعة 7×5. حرّك ثم اضرب. الرامي يضرب من بعيد، العربة تتفوق على الرماة، والرمح يتفوق على العربات. النصر يمنحك ذهباً.</div><div class="card"><b>🗺️ الحملة: المعركة '+(((S.tcLv||0)+1))+' من 5</b><div class="small">كل فوز يقوّي العدو التالي. أكمل 5 انتصارات للحصول على 150 ذهب. الخسارة ترجعك مرحلة.</div></div><div class="card"><b>🔧 تطوير الوحدات (+2 صحة لكل مستوى)</b>'+['sp','ar','ch'].map(t=>'<button onclick="__tb.buyUp(\''+t+'\')">'+UT[t].i+' '+UT[t].n+' م'+upLv(t)+'/3 - '+(upLv(t)>=3?'أقصى':60*(upLv(t)+1)+' ذهب')+'</button>').join('')+'</div><button onclick="__tb.start()">'+(ready()?'ابدأ المعركة':'⏳ غير متاح الآن')+'</button><button onclick="closeModal()">إغلاق</button>');return}
+ const S=S_();if(!TB){showModal('<h2>⚔️ معركة تكتيكية</h2><div class="small">3 وحدات ضد جيش العدو على رقعة 7×5. حرّك ثم اضرب. الرامي يضرب من بعيد، العربة تتفوق على الرماة، والرمح يتفوق على العربات. التطويق: +1 ضرر إذا كان حليفك بجوار العدو. النصر يمنحك ذهباً.</div><div class="card"><b>🗺️ الحملة: المعركة '+(((S.tcLv||0)+1))+' من 5</b><div class="small">كل فوز يقوّي العدو التالي. أكمل 5 انتصارات للحصول على 150 ذهب. الخسارة ترجعك مرحلة.</div></div><div class="card"><b>🔧 تطوير الوحدات (+2 صحة لكل مستوى)</b>'+['sp','ar','ch'].map(t=>'<button onclick="__tb.buyUp(\''+t+'\')">'+UT[t].i+' '+UT[t].n+' م'+upLv(t)+'/3 - '+(upLv(t)>=3?'أقصى':60*(upLv(t)+1)+' ذهب')+'</button>').join('')+'</div><button onclick="__tb.start()">'+(ready()?'ابدأ المعركة':'⏳ غير متاح الآن')+'</button><button onclick="closeModal()">إغلاق</button>');return}
  let g='<div style="direction:ltr;display:grid;grid-template-columns:repeat('+COLS+',minmax(0,1fr));width:100%;box-sizing:border-box;gap:3px">';
  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const u=at(x,y);const s=TB.sel;let bg=TB.rock[x+','+y]?'#2a2a2a':'#5a4a2a';
   if(s&&!u&&!s.moved&&Math.abs(x-s.x)+Math.abs(y-s.y)<=UT[s.t].mov)bg='#7a6a3a';
