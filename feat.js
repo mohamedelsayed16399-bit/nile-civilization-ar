@@ -174,7 +174,7 @@ function routes(){const S=S_();return Object.keys(S.caravans||{}).filter(k=>S.ca
 function nm(k){try{return NEIGH_DEF.find(d=>d.id===k).n}catch(e){return k}}
 function raidCheck(force){
  const S=S_();if(S.day===lastD&&!force)return;lastD=S.day;
- if(pend)return;const rs=routes().filter(k=>!(S.guard&&S.guard[k]>S.day));if(!rs.length||S.day<25)return;
+ if(pend||(S.spShield&&S.spShield>S.day&&!force))return;const rs=routes().filter(k=>!(S.guard&&S.guard[k]>S.day));if(!rs.length||S.day<25)return;
  let seed=(S.seed||5)*977+S.day*31;seed=(seed*9301+49297)%233280;const r=seed/233280;
  if(!force&&(r>.035||(S.raidAt!==undefined&&S.day-S.raidAt<15)))return;
  const k=rs[Math.floor(r*1000)%rs.length];pend=k;S.raidAt=S.day;
@@ -251,4 +251,20 @@ function show(msg){const S=S_(),c=cd();
 document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-m="flood"]');if(t){e.stopPropagation();show();return}
  const b=e.target.closest&&e.target.closest('[data-fl]');if(b){e.stopPropagation();const r=act(b.dataset.fl);show(!r?'':r.err?'⚠️ موارد غير كافية':r.win?'✅ فيضان مبارك!':'❌ الفيضان دمّر جزءاً من المحصول')}},true);
 window.__flood={act,show,cd};
+})();
+;(function(){/* R74 spies */
+const S_=()=>__civ.S,R=()=>S_().res;
+const M={steal:{n:'💰 سرقة خزينة',c:40,ok:.5,g:()=>120+S_().day%50},sci:{n:'📚 سرقة أسرار علمية',c:60,ok:.45,g:()=>25},sab:{n:'🔥 تخريب العدو',c:50,ok:.55,g:()=>0}};
+function cd(){const S=S_();return Math.max(0,(S.spCd||0)-S.day)}
+function go(id,rnd){const S=S_(),m=M[id];if(!m||cd()>0)return null;if(R().gold<m.c)return{err:1};R().gold-=m.c;S.spCd=S.day+10;
+ const win=(rnd===undefined?Math.random():rnd)<m.ok;const g=m.g();
+ if(win){S.spW=(S.spW||0)+1;if(id==='steal')R().gold+=g;else if(id==='sci')R().science=(R().science||0)+g;else S.spShield=S.day+15;S.log&&S.log.unshift('يوم '+S.day+': 🕵️ نجحت مهمة '+m.n)}
+ else{S.spL=(S.spL||0)+1;R().culture=Math.max(0,R().culture-5);S.log&&S.log.unshift('يوم '+S.day+': 🕵️ قُبض على الجاسوس')}
+ return{win,g}}
+function show(msg){const S=S_(),c=cd();
+ const bs=Object.keys(M).map(id=>'<button data-sp="'+id+'"'+(c>0?' disabled':'')+'>'+M[id].n+' ('+M[id].c+' ذهب) '+Math.round(M[id].ok*100)+'%</button>').join('');
+ showModal('<h2>🕵️ الجواسيس</h2><div class="small">أرسل جاسوساً: سرقة ذهب أو علم، أو تخريب يحمي من الغارات 15 يوماً. الفشل يكلف ثقافة.'+(c>0?'<br>التالي بعد '+c+' يوم':'')+'</div>'+(msg?'<div class="card">'+msg+'</div>':'')+bs+'<div class="small">نجاح '+(S.spW||0)+' | فشل '+(S.spL||0)+'</div><button onclick="closeModal()">إغلاق</button>')}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-m="spy"]');if(t){e.stopPropagation();show();return}
+ const b=e.target.closest&&e.target.closest('[data-sp]');if(b){e.stopPropagation();const r=go(b.dataset.sp);show(!r?'':r.err?'⚠️ ذهب غير كاف':r.win?'✅ نجحت المهمة':'❌ قُبض على الجاسوس')}},true);
+window.__spy={go,show,cd};
 })();
