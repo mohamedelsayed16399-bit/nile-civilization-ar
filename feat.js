@@ -235,3 +235,20 @@ let last=null;
 setInterval(()=>{try{const e=__eraTint.era()[1];if(last&&e!==last){const t=document.getElementById('toast');if(t){t.textContent='🌅 دخلت '+e;t.style.opacity=1;t.style.display='block';setTimeout(()=>{t.style.opacity=''},3500)}
 const S=__civ.S;if(S.log)S.log.unshift('🌅 بداية '+e)}last=e}catch(x){}},3000);
 })();
+;(function(){/* R73 Nile flood minigame */
+const S_=()=>__civ.S,R=()=>S_().res;
+const OPT={dam:{n:'🧱 بناء سد',k:'stone',c:25,ok:.8,w:'🧱'},canal:{n:'🪵 حفر قنوات',k:'wood',c:25,ok:.65,w:'🪵'},pray:{n:'🙏 صلاة للنيل',k:'culture',c:12,ok:.45,w:'🙏'}};
+function cd(){const S=S_();return Math.max(0,(S.flCd||0)-S.day)}
+function act(id,rnd){const S=S_(),o=OPT[id];if(!o||cd()>0)return null;if((R()[o.k]||0)<o.c)return{err:1};
+ R()[o.k]-=o.c;S.flCd=S.day+20;const win=(rnd===undefined?Math.random():rnd)<o.ok;
+ const lvl=Math.min(10,Math.floor((S.pop||S.people||10)/50)+1);const food=Math.round(60+lvl*25);
+ if(win){R().food+=food;R().culture+=5;S.flW=(S.flW||0)+1;S.log&&S.log.unshift('يوم '+S.day+': 🌊 فيضان مبارك! +'+food+' طعام')}
+ else{R().food=Math.max(0,R().food-Math.round(food/2));S.flL=(S.flL||0)+1;S.log&&S.log.unshift('يوم '+S.day+': 🌊 فيضان مدمّر، خسرت '+Math.round(food/2)+' طعام')}
+ return{win,food}}
+function show(msg){const S=S_(),c=cd();
+ const bs=Object.keys(OPT).map(id=>{const o=OPT[id];return '<button data-fl="'+id+'"'+(c>0?' disabled':'')+'>'+o.n+' ('+o.c+' '+o.k+') نجاح '+Math.round(o.ok*100)+'%</button>'}).join('');
+ showModal('<h2>🌊 فيضان النيل</h2><div class="small">اختر طريقة استقبال الفيضان. النجاح يعطي طعاماً وثقافة، والفشل يضيع جزءاً من الطعام.'+(c>0?'<br>التالي بعد '+c+' يوم':'')+'</div>'+(msg?'<div class="card">'+msg+'</div>':'')+'<div>'+bs+'</div><div class="small">نجح '+(S.flW||0)+' | فشل '+(S.flL||0)+'</div><button onclick="closeModal()">إغلاق</button>')}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-m="flood"]');if(t){e.stopPropagation();show();return}
+ const b=e.target.closest&&e.target.closest('[data-fl]');if(b){e.stopPropagation();const r=act(b.dataset.fl);show(!r?'':r.err?'⚠️ موارد غير كافية':r.win?'✅ فيضان مبارك!':'❌ الفيضان دمّر جزءاً من المحصول')}},true);
+window.__flood={act,show,cd};
+})();
