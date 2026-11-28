@@ -275,3 +275,20 @@ document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest
  setTimeout(()=>{const m=(document.querySelector('#mbox')||{}).innerText||'';if(t.dataset.fl||t.dataset.sp){vib(/✅/.test(m)?[40,30,40]:/❌/.test(m)?[120]:10)}else vib(8)},60)},true);
 window.__haptic={vib};
 })();
+;(function(){/* R76 historical events */
+const EV=[
+ {id:'hyk',n:'🐎 وصول الهكسوس: تعلمت صناعة العجلات الحربية',f:S=>{S.res.gold+=60;S.res.science=(S.res.science||0)+10}},
+ {id:'pun',n:'⛵ بعثة بونت عادت بالبخور والذهب',f:S=>{S.res.gold+=150;S.res.culture+=20}},
+ {id:'amn',n:'☀️ ثورة آتون الدينية: ارتفعت الثقافة',f:S=>{S.res.culture+=40}},
+ {id:'pla',n:'🦟 وباء في الدلتا: خسرت جزءاً من الطعام',f:S=>{S.res.food=Math.floor(S.res.food*.85)}},
+ {id:'lib',n:'📜 مكتبة الإسكندرية تتلقى مخطوطات جديدة',f:S=>{S.res.science=(S.res.science||0)+25;S.res.culture+=15}},
+ {id:'drt',n:'🌵 سنة جفاف: نقص المحصول',f:S=>{S.res.food=Math.floor(S.res.food*.9)}}];
+let last=-1;
+function check(force){const S=__civ.S;if(!S||(S.day<30&&!force))return;const slot=Math.floor(S.day/40);
+ if(!force&&(slot<=(S.hevSlot||0)))return;S.hevSlot=slot;
+ const i=((S.seed||7)*31+slot*17)%EV.length;const e=EV[Math.abs(i)];e.f(S);S.hevN=(S.hevN||0)+1;
+ try{S.log.unshift('يوم '+S.day+': 📜 '+e.n)}catch(x){}
+ const t=document.getElementById('toast');if(t){t.textContent=e.n;t.style.opacity=1;t.style.display='block';setTimeout(()=>{t.style.opacity=''},4000)}return e.id}
+setInterval(()=>{try{check()}catch(e){}},2500);
+window.__hev={check,EV};
+})();
